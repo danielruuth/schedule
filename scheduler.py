@@ -1,4 +1,5 @@
 from ortools.sat.python import cp_model
+import json
 
 class createSchedule:
   def __init__(self, rules, resources):
@@ -60,8 +61,7 @@ class createSchedule:
     solver.parameters.enumerate_all_solutions = True
     
     class NursesPartialSolutionPrinter(cp_model.CpSolverSolutionCallback):
-        """Print intermediate solutions."""
-
+      # This should be updated to return a dict/json
         def __init__(self, shifts, num_nurses, num_days, num_shifts, limit):
             cp_model.CpSolverSolutionCallback.__init__(self)
             self._shifts = shifts
@@ -100,8 +100,11 @@ class createSchedule:
     solver.Solve(model, solution_printer)
 
     # Statistics.
-    print('\nStatistics')
-    print('  - conflicts      : %i' % solver.NumConflicts())
-    print('  - branches       : %i' % solver.NumBranches())
-    print('  - wall time      : %f s' % solver.WallTime())
-    print('  - solutions found: %i' % solution_printer.solution_count())
+    return json.dumps(
+      {
+        "conflicts":solver.NumConflicts(),
+        "branches": solver.NumBranches(),
+        "wall_time": solver.WallTime(),
+        "solutions": solution_printer.soulution_count()
+      }
+    )
