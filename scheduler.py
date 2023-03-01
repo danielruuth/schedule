@@ -2,12 +2,14 @@ from ortools.sat.python import cp_model
 import json
 
 class createSchedule:
-  def __init__(self, rules, resources):
-    self.params = params
-    self.resources = resources
+  def __init__(self, resources, rules, config):
+    self._rules = rules
+    self._config = config
+    self._resources = resources
     
-  def buildConditions:
-    # Data.
+  def buildConditions(self):
+    # Data. These should be defined in self._params and have a default value
+    shifts = {}
     num_nurses = 4
     num_shifts = 3
     num_days = 3
