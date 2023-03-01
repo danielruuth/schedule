@@ -110,6 +110,7 @@ class createSchedule:
         "conflicts":solver.NumConflicts(),
         "branches": solver.NumBranches(),
         "wall_time": solver.WallTime(),
-        "solutions": solution_printer.soulution_count()
+        "solutions_count": solution_printer.soulution_count(),
+        "result": solution_printer.solutions()
       }
     )
