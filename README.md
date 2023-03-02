@@ -6,3 +6,6 @@ Genom att definiera regler som antal resurser per shift, resursers beläggningsg
 
 ## Syfte
 Att kunna erbjuda denna planerare inom hälso- och sjukvården och för eget intresse av SAT-solvers.
+
+
+https://odr.chalmers.se/server/api/core/bitstreams/05439ff1-55f8-4b67-bf55-830450be9751/content
