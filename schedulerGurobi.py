@@ -34,6 +34,10 @@ for d in gp.date_range(start_date, end_date):
         week_end = week_start + gp.timedelta(days=6)
         model.addConstr(gp.quicksum(shifts[(r, dd, s)] for dd in gp.date_range(week_start, week_end) for s in range(num_shifts)) <= max_shifts_per_week)
 
+        # A resource scheduled for shift B cannot be scheduled for shift A the following day
+        if s == 0 and d < end_date - gp.timedelta(days=1):
+            model.addConstr(shifts[(r, d, s)] + shifts[(r, d + gp.timedelta(days=1), 1)] <= 1)
+
     # On weekends, assign 2 resources to each shift
     if d.weekday() >= 5:  # weekend
         model.addConstr(gp.quicksum(shifts[(r, d, 0)] for r in range(num_resources)) == 2)
