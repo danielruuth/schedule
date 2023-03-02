@@ -5,14 +5,15 @@ class createSchedule:
   def __init__(self, resources, rules, config):
 
     # Define the parameters, should be passed in resources
-    num_resources = 10  # number of resources
-    num_shifts = 2  # number of shifts per day
-    shift_sizes = [3, 2]  # number of resources needed for each shift
+    num_resources = resources.len()  # number of resources
+    num_shifts = config.shifts  # number of shifts per day
+    shift_sizes = config.shiftSizes # [3, 2]  # number of resources needed for each shift
     max_shifts_per_day = 1  # maximum number of shifts per resource per day
-    max_shifts_per_week = 5  # maximum number of shifts per resource per week
-    start_date = '2023-03-01'  # start date of the schedule
-    end_date = '2023-03-14'  # end date of the schedule
-
+    max_shifts_per_week = rules.maxShiftPerWeek # 5  # maximum number of shifts per resource per week
+    start_date = config.startDate # '2023-03-01'  # start date of the schedule
+    end_date = config.endDate # '2023-03-14'  # end date of the schedule
+    use_healthschedule = rules.healthSchedule
+    
     # Create the model
     model = gp.Model('Resource Scheduling')
 
@@ -37,12 +38,13 @@ class createSchedule:
             week_start = d - gp.timedelta(days=d.weekday())
             week_end = week_start + gp.timedelta(days=6)
             model.addConstr(gp.quicksum(shifts[(r, dd, s)] for dd in gp.date_range(week_start, week_end) for s in range(num_shifts)) <= max_shifts_per_week)
+            
+            if use_healthschedule:
+              # A resource scheduled for shift B cannot be scheduled for shift A the following day
+              if s == 0 and d < end_date - gp.timedelta(days=1):
+                  model.addConstr(shifts[(r, d, s)] + shifts[(r, d + gp.timedelta(days=1), 1)] <= 1)
 
-            # A resource scheduled for shift B cannot be scheduled for shift A the following day
-            if s == 0 and d < end_date - gp.timedelta(days=1):
-                model.addConstr(shifts[(r, d, s)] + shifts[(r, d + gp.timedelta(days=1), 1)] <= 1)
-
-        # On weekends, assign 2 resources to each shift
+        # On weekends, assign 2 resources to each shift, this should be in rules
         if d.weekday() >= 5:  # weekend
             model.addConstr(gp.quicksum(shifts[(r, d, 0)] for r in range(num_resources)) == 2)
             model.addConstr(gp.quicksum(shifts[(r, d, 1)] for r in range(num_resources)) == 2)
