@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 import json
-from flask import Flask, jsonify
+from flask import Flask, jsonify, render_template, url_for
 app = Flask(__name__)
 @app.route('/')
 def index():
@@ -11,7 +11,7 @@ def index():
 
     # Render a template with the content of the data dictionary
     return render_template('index.html', data=data)
-@app.route('/', methods=['POST'])
+@app.route('/api/getschedule', methods=['POST'])
 def generate_schedule():
     return jsonify({'action':'Generate schedule'})
 
