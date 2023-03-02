@@ -5,7 +5,12 @@ from flask import Flask, jsonify
 app = Flask(__name__)
 @app.route('/')
 def index():
-    return jsonify({'action': 'Create schedule'})
+    data = {}
+    data['title'] = 'Schemaläggare 3000'
+    data['body'] = """<p>Här kommer schemat</p>"""
+
+    # Render a template with the content of the data dictionary
+    return render_template('index.html', data=data)
 @app.route('/', methods=['POST'])
 def generate_schedule():
     return jsonify({'action':'Generate schedule'})
