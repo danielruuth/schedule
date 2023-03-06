@@ -39,7 +39,7 @@ class Scheduler:
         return sequence
 
 
-    def add_soft_sequence_constraint(model, works, hard_min, soft_min, min_cost,
+    def add_soft_sequence_constraint(self, model, works, hard_min, soft_min, min_cost,
                                      soft_max, hard_max, max_cost, prefix):
         cost_literals = []
         cost_coefficients = []
@@ -83,7 +83,7 @@ class Scheduler:
         return cost_literals, cost_coefficients
 
 
-    def add_soft_sum_constraint(model, works, hard_min, soft_min, min_cost,
+    def add_soft_sum_constraint(self, model, works, hard_min, soft_min, min_cost,
                                 soft_max, hard_max, max_cost, prefix):
 
         cost_variables = []
@@ -116,23 +116,23 @@ class Scheduler:
     def solve(self):
         """Solves the shift scheduling problem."""
         # Data
-        num_employees = len(self.params.resources) #8
-        num_weeks = self.params.weeks #3
-        shifts = self.params.shifts #['O', 'A', 'C'] # Off, day, night
+        num_employees = len(self._params['resources']) #8
+        num_weeks = self._params['weeks'] #3
+        shifts = self._params['shifts'] #['O', 'A', 'C'] # Off, day, night
 
         # Fixed assignment: (employee, shift, day).
         # This fixes the first 2 days of the schedule.
         # This should come from params
-        fixed_assignments = self.params.fixed_assignments
+        fixed_assignments = self._params['fixed_assignments']
 
         # Request: (employee, shift, day, weight)
         # A negative weight indicates that the employee desire this assignment.
-        requests = self.params.requests
+        requests = self._params['requests']
 
         # Shift constraints on continuous sequence :
         #     (shift, hard_min, soft_min, min_penalty,
         #             soft_max, hard_max, max_penalty)
-        shift_constraints = self.params.shift_constraints
+        shift_constraints = self._params['shift_constraints']
 
         # Weekly sum constraints on shifts days:
         #     (shift, hard_min, soft_min, min_penalty,
@@ -153,7 +153,7 @@ class Scheduler:
 
         # daily demands for work shifts (day, night) for each day
         # of the week starting on Monday.
-        weekly_cover_demands = self.params.cover_demans
+        weekly_cover_demands = self._params['cover_demands']
 
         # Penalty for exceeding the cover constraint per shift type.
         excess_cover_penalties = (2, 2, 5)
@@ -194,7 +194,7 @@ class Scheduler:
             shift, hard_min, soft_min, min_cost, soft_max, hard_max, max_cost = ct
             for e in range(num_employees):
                 works = [work[e, shift, d] for d in range(num_days)]
-                variables, coeffs = add_soft_sequence_constraint(
+                variables, coeffs = self.add_soft_sequence_constraint(
                     model, works, hard_min, soft_min, min_cost, soft_max, hard_max,
                     max_cost,
                     'shift_constraint(employee %i, shift %i)' % (e, shift))
@@ -207,7 +207,7 @@ class Scheduler:
             for e in range(num_employees):
                 for w in range(num_weeks):
                     works = [work[e, shift, d + w * 7] for d in range(7)]
-                    variables, coeffs = add_soft_sum_constraint(
+                    variables, coeffs = self.add_soft_sum_constraint(
                         model, works, hard_min, soft_min, min_cost, soft_max,
                         hard_max, max_cost,
                         'weekly_sum_constraint(employee %i, shift %i, week %i)' %
@@ -313,10 +313,10 @@ class Scheduler:
 
 def main(_):
     params = {
-        resources: ['Jim', 'Pam', 'Dwight', 'Stan', 'Creed', 'Andy', 'Michael', 'Phyllis'],
-        shifts: ['O', 'A', 'C'], # Off, day, night
-        weeks: 3,
-        fixed_assignments: [
+        'resources': ['Jim', 'Pam', 'Dwight', 'Stan', 'Creed', 'Andy', 'Michael', 'Phyllis'],
+        'shifts': ['O', 'A', 'C'], # Off, day, night
+        'weeks': 3,
+        'fixed_assignments': [
             (0, 0, 0),
             (1, 0, 0),
             (2, 1, 0),
@@ -324,7 +324,6 @@ def main(_):
             (4, 2, 0),
             (5, 2, 0),
             (6, 2, 3),
-            (7, 3, 0),
             (0, 1, 1),
             (1, 1, 1),
             (2, 2, 1),
@@ -332,24 +331,23 @@ def main(_):
             (4, 2, 1),
             (5, 0, 1),
             (6, 0, 1),
-            (7, 3, 1),
         ],
-        requests: [
+        'requests': [
             # Employee 3 does not want to work on the first Saturday (negative weight
             # for the Off shift).
             (3, 0, 5, -2),
             # Employee 5 wants a night shift on the second Thursday (negative weight).
-            (5, 3, 10, -2),
+            (5, 2, 10, -2),
             # Employee 2 does not want a night shift on the first Friday (positive
             # weight).
-            (2, 3, 4, 4)
+            (2, 2, 4, 4)
         ],
-        shift_constraints:  [
+        'shift_constraints':  [
             # One or two consecutive days of rest, this is a hard constraint.
             (0, 1, 1, 0, 2, 2, 0)
         ],
         
-        cover_demands: [
+        'cover_demands': [
             (3, 3),  # Monday
             (3, 3),  # Tuesday
             (3, 3),  # Wednesday
@@ -369,4 +367,3 @@ def main(_):
 if __name__ == '__main__':
     app.run(main)
     
-
