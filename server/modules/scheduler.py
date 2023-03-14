@@ -1,18 +1,4 @@
 #!/usr/bin/env python3
-# Copyright 2010-2022 Google LLC
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-"""Creates a shift scheduling problem and solves it."""
-
 from absl import app
 from absl import flags
 
@@ -263,8 +249,13 @@ class Scheduler:
         solver = cp_model.CpSolver()
         solution_printer = cp_model.ObjectiveSolutionPrinter()
         status = solver.Solve(model, solution_printer)
-
+        
         # Print solution.
+        retval_shifts = []
+        for e in range(num_employees):
+            retval_shifts.append([])
+        retval_penalties = []
+
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
             print()
             header = '          '
@@ -277,6 +268,7 @@ class Scheduler:
                     for s in range(num_shifts):
                         if solver.BooleanValue(work[e, s, d]):
                             schedule += shifts[s] + ' '
+                            retval_shifts[e].append(shifts[s])
                 print('worker %i: %s' % (e, schedule))
             print()
             print('Penalties:')
@@ -285,12 +277,16 @@ class Scheduler:
                     penalty = obj_bool_coeffs[i]
                     if penalty > 0:
                         print('  %s violated, penalty=%i' % (var.Name(), penalty))
+                        retval_penalties.append('%s violated, penalty=%i' % (var.Name(), penalty))
                     else:
                         print('  %s fulfilled, gain=%i' % (var.Name(), -penalty))
+                        retval_penalties.append('%s fulfilled, gain=%i' % (var.Name(), -penalty))
 
             for i, var in enumerate(obj_int_vars):
                 if solver.Value(var) > 0:
                     print('  %s violated by %i, linear penalty=%i' %
+                          (var.Name(), solver.Value(var), obj_int_coeffs[i]))
+                    retval_penalties.append('%s violated by %i, linear penalty=%i' %
                           (var.Name(), solver.Value(var), obj_int_coeffs[i]))
 
         print()
@@ -300,71 +296,14 @@ class Scheduler:
         print('  - branches        : %i' % solver.NumBranches())
         print('  - wall time       : %f s' % solver.WallTime())
         # Statistics.
-        # return json.dumps(
-        #  {
-        #    "conflicts":solver.NumConflicts(),
-        #    "branches": solver.NumBranches(),
-        #    "wall_time": solver.WallTime(),
-        #    "status": solver.StatusName(status),
-        #    "result": solution_printer.solutions()
-        #  }
-        # )
+        return json.dumps(
+          {
+            "status":solver.StatusName(status),
+            "conflicts": solver.NumConflicts(),
+            "branches": solver.NumBranches(),
+            "wall_time": solver.WallTime(),
+            "result": [retval_shifts, retval_penalties]
+          }
+        )
 
-
-def main(_):
-    params = {
-        'resources': ['Jim', 'Pam', 'Dwight', 'Stan', 'Creed', 'Andy', 'Michael', 'Phyllis'],
-        'shifts': ['O', 'A', 'C'], # Off, day, night
-        'weeks': 3,
-        'fixed_assignments': [
-            (0, 0, 0),
-            (1, 0, 0),
-            (2, 1, 0),
-            (3, 1, 0),
-            (4, 2, 0),
-            (5, 2, 0),
-            (6, 2, 3),
-            (0, 1, 1),
-            (1, 1, 1),
-            (2, 2, 1),
-            (3, 2, 1),
-            (4, 2, 1),
-            (5, 0, 1),
-            (6, 0, 1),
-        ],
-        'requests': [
-            # Employee 3 does not want to work on the first Saturday (negative weight
-            # for the Off shift).
-            (3, 0, 5, -2),
-            # Employee 5 wants a night shift on the second Thursday (negative weight).
-            (5, 2, 10, -2),
-            # Employee 2 does not want a night shift on the first Friday (positive
-            # weight).
-            (2, 2, 4, 4)
-        ],
-        'shift_constraints':  [
-            # One or two consecutive days of rest, this is a hard constraint.
-            (0, 1, 1, 0, 2, 2, 0)
-        ],
-        
-        'cover_demands': [
-            (3, 3),  # Monday
-            (3, 3),  # Tuesday
-            (3, 3),  # Wednesday
-            (3, 3),  # Thursday
-            (3, 3),  # Friday
-            (2, 2),  # Saturday
-            (2, 2),  # Sunday
-        ]
-        
-    }
-    
-        
-    s = Scheduler(params)
-    s.solve()
-
-
-if __name__ == '__main__':
-    app.run(main)
-    
 
