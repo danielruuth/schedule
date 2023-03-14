@@ -70,6 +70,6 @@ def generate_schedule():
         
     s = Scheduler(post_params)
     solution = s.solve()
-    return solution;
+    return solution
 
 app.run()

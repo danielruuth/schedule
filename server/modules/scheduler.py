@@ -253,48 +253,31 @@ class Scheduler:
         # Print solution.
         retval_shifts = []
         for e in range(num_employees):
-            retval_shifts.append([])
+            retval_shifts.append({'name':self._params['resources'][e], 'shifts':[]})
         retval_penalties = []
 
         if status == cp_model.OPTIMAL or status == cp_model.FEASIBLE:
-            print()
-            header = '          '
-            for w in range(num_weeks):
-                header += 'M T W T F S S '
-            print(header)
             for e in range(num_employees):
                 schedule = ''
                 for d in range(num_days):
                     for s in range(num_shifts):
                         if solver.BooleanValue(work[e, s, d]):
                             schedule += shifts[s] + ' '
-                            retval_shifts[e].append(shifts[s])
-                print('worker %i: %s' % (e, schedule))
-            print()
-            print('Penalties:')
+                            retval_shifts[e]['shifts'].append(shifts[s])
+                
             for i, var in enumerate(obj_bool_vars):
                 if solver.BooleanValue(var):
                     penalty = obj_bool_coeffs[i]
                     if penalty > 0:
-                        print('  %s violated, penalty=%i' % (var.Name(), penalty))
                         retval_penalties.append('%s violated, penalty=%i' % (var.Name(), penalty))
                     else:
-                        print('  %s fulfilled, gain=%i' % (var.Name(), -penalty))
                         retval_penalties.append('%s fulfilled, gain=%i' % (var.Name(), -penalty))
 
             for i, var in enumerate(obj_int_vars):
                 if solver.Value(var) > 0:
-                    print('  %s violated by %i, linear penalty=%i' %
-                          (var.Name(), solver.Value(var), obj_int_coeffs[i]))
                     retval_penalties.append('%s violated by %i, linear penalty=%i' %
                           (var.Name(), solver.Value(var), obj_int_coeffs[i]))
 
-        print()
-        print('Statistics')
-        print('  - status          : %s' % solver.StatusName(status))
-        print('  - conflicts       : %i' % solver.NumConflicts())
-        print('  - branches        : %i' % solver.NumBranches())
-        print('  - wall time       : %f s' % solver.WallTime())
         # Statistics.
         return json.dumps(
           {
