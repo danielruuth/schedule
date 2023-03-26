@@ -3,8 +3,10 @@
 import json
 from flask import Flask, jsonify, render_template, url_for, request
 from modules.scheduler import Scheduler
+from flask_cors import CORS
 
 app = Flask(__name__)
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 @app.route('/')
 def index():
     data = {}
@@ -56,7 +58,9 @@ def generate_schedule():
 # 	]
 # }
 
-    post_data = request.get_json()
+    post_data = request.get_json(force=True)
+    print(post_data)
+
     post_params = {
         'resources': post_data['resources'],
         'shifts': post_data['shifts'],
@@ -66,6 +70,8 @@ def generate_schedule():
         'shift_constraints':  [tuple(sub_array) for sub_array in post_data['shift_constraints']],
         'cover_demands': [tuple(sub_array) for sub_array in post_data['cover_demands']]
     }
+
+    print(post_params)
     
         
     s = Scheduler(post_params)
