@@ -125,7 +125,21 @@ class Scheduler:
         #             soft_max, hard_max, max_penalty)
         weekly_sum_constraints = [
             # Constraints on rests per week.
+             # 0 = ledig dag, 
+             # 1 = absolut minst en ledig dag, 
+             # 2 = ok med 2
+             # 7 straff vid för få lediga dagar
+             # 2 = helst max två lediga dagar, 
+             # 3 = absolut mest 3 lediga dagar
+             # 4 = straff vid för många dagar ledigt
             (0, 1, 2, 7, 2, 3, 4),
+            # 2 = kvälls skift
+            # 0 = ok med inga kvällsskift
+            # 1 = helst ett kvällsskift
+            # 3 = straff vid för få kvällsskift
+            # 4 = max 4 kvällspass
+            # 4 = max 4 kvällspass
+            # 0 = går inte med mer än 4 kvällspass //hard
             # At least 1 evening shift per week (penalized). At most 4 (hard).
             (2, 0, 1, 3, 4, 4, 0),
         ]
@@ -133,7 +147,7 @@ class Scheduler:
         # Penalized transitions:
         #     (previous_shift, next_shift, penalty (0 means forbidden))
         penalized_transitions = [
-            # Night to morning has a penalty of 4.
+            # Night to morning has a penalty of 4. Hälsoschema
             (2, 1, 4),
         ]
 
@@ -278,15 +292,20 @@ class Scheduler:
                     retval_penalties.append('%s violated by %i, linear penalty=%i' %
                           (var.Name(), solver.Value(var), obj_int_coeffs[i]))
 
-        # Statistics.
-        return json.dumps(
-          {
-            "status":solver.StatusName(status),
-            "conflicts": solver.NumConflicts(),
-            "branches": solver.NumBranches(),
-            "wall_time": solver.WallTime(),
-            "result": [retval_shifts, retval_penalties]
-          }
-        )
+            # Statistics.
+            return json.dumps(
+            {
+                "status":solver.StatusName(status),
+                "conflicts": solver.NumConflicts(),
+                "branches": solver.NumBranches(),
+                "wall_time": solver.WallTime(),
+                "result": {"shifts": retval_shifts, "penalties": retval_penalties}
+            }
+            )
+        else:
+            return json.dumps({
+                "result":[],
+                "status": 'NOT FEASABLE'
+            }) 
 
 
