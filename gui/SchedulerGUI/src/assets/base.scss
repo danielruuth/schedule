@@ -1,0 +1,48 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+$color-primary: rgba(255,209,0,1); //Yellow
+$color-secondary: rgba(255,99,114,1); // NeonPink
+$color-alternative: rgba(61,78,220,1); //Purple
+$color-bodybackground: rgba(234,234,234,1); //Dull grey
+$color-bodybackground-dark: rgba(225,225,227,1); //Dark grey
+$color-canvasbackground: rgba(255,255,255,1); //Oh snow white
+
+
+
+@mixin border-radius() {
+    border-radius: 4px;
+}
+
+@mixin padding() {
+    padding: .5rem 1rem .5rem 1rem;
+}
+
+@mixin shadow($level){
+    background: #FF6372;
+    box-shadow: 0 1px 6px 0 rgba(0,0,0,0.31);
+}
+
+body{
+    font-size: 14pt;
+    background-color: $color-bodybackground;
+}
+
+nav{
+    ul{
+        display: flex;
+        align-items: flex-start;
+        
+        li{
+            flex:1
+        } 
+    }
+}
+
+.panel{
+    @include border-radius();
+    @include padding();
+    @iclude shadow(1);
+    background-color: $color-canvasbackground;
+}
