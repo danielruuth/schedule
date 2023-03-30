@@ -146,17 +146,15 @@ class Scheduler:
 
         # Penalized transitions:
         #     (previous_shift, next_shift, penalty (0 means forbidden))
-        penalized_transitions = [
-            # Night to morning has a penalty of 4. Hälsoschema
-            (2, 1, 4),
-        ]
+        penalized_transitions = self._params['penalized_transitions']
+        
 
         # daily demands for work shifts (day, night) for each day
         # of the week starting on Monday.
         weekly_cover_demands = self._params['cover_demands']
 
         # Penalty for exceeding the cover constraint per shift type.
-        excess_cover_penalties = (2, 2, 5)
+        excess_cover_penalties = (2, 2, 5, 5) #this needs to represent per shift
 
         num_days = num_weeks * 7
         num_shifts = len(shifts)
@@ -214,7 +212,18 @@ class Scheduler:
                         (e, shift, w))
                     obj_int_vars.extend(variables)
                     obj_int_coeffs.extend(coeffs)
+        ##
 
+        #if (i + 1) % 7 == 6 or (i + 1) % 7 == 0:
+        #    for e in range(num_employees):
+        #        self.AddSoftSequenceConstraint(
+        #            [tasks[i * num_resources + j], tasks[(i+1) * num_resources + j]],
+        #            1,  # a delay of 1 means that the same resource works on the two consecutive days
+        #            f'soft_sequence_constraint_{i}_{j}'
+        #        )
+
+
+        ##
         # Penalized transitions
         for previous_shift, next_shift, cost in penalized_transitions:
             for e in range(num_employees):
@@ -283,14 +292,24 @@ class Scheduler:
                 if solver.BooleanValue(var):
                     penalty = obj_bool_coeffs[i]
                     if penalty > 0:
-                        retval_penalties.append('%s violated, penalty=%i' % (var.Name(), penalty))
+                        #retval_penalties.append('%s violated, penalty=%i' % (var.Name(), penalty))
+                        retval_penalties.append({
+                            "name": var.Name(),
+                            "penalty": penalty,
+                            "solver": False
+                        })
                     else:
                         retval_penalties.append('%s fulfilled, gain=%i' % (var.Name(), -penalty))
 
             for i, var in enumerate(obj_int_vars):
                 if solver.Value(var) > 0:
-                    retval_penalties.append('%s violated by %i, linear penalty=%i' %
-                          (var.Name(), solver.Value(var), obj_int_coeffs[i]))
+                    #retval_penalties.append('%s violated by %i, linear penalty=%i' %
+                    #      (var.Name(), solver.Value(var), obj_int_coeffs[i])
+                    retval_penalties.append({
+                        "name": var.Name(),
+                        "penalty": obj_int_coeffs[i],
+                        "solver": solver.Value(var)
+                    })
 
             # Statistics.
             return json.dumps(

@@ -68,7 +68,8 @@ def generate_schedule():
         'fixed_assignments': [tuple(sub_array) for sub_array in post_data['fixed_assignments']],
         'requests': [tuple(sub_array) for sub_array in post_data['requests']],
         'shift_constraints':  [tuple(sub_array) for sub_array in post_data['shift_constraints']],
-        'cover_demands': [tuple(sub_array) for sub_array in post_data['cover_demands']]
+        'cover_demands': [tuple(sub_array) for sub_array in post_data['cover_demands']],
+        'penalized_transitions': [tuple(sub_array) for sub_array in post_data['penalized_transitions']]
     }
 
     print(post_params)
