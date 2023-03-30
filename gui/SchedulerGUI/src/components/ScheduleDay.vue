@@ -1,39 +1,60 @@
 <template>
-    <div @click="toggleShift()" class="day-info grid grid-cols-2 gap-1">
-        <div class="text-lg font-bold text-center mt-1 mb-1">
-            {{ label }}
-        </div>
-        <div class="text-lg font-bold text-center mt-1 mb-1">
+    <ContextMenu ref="menu" :model="shiftsMenu" />
+    <div @contextmenu="onDayRightClick" class="day-info grid grid-cols-2 gap-1" :class="(scheduledShift != requestedShift && scheduledShift != '' && requestedShift != '') ? 'request-missmatch' : ''">
+        <div class="text-lg font-bold text-center mt-1 mb-1" :class="(requestedShift=='') ? 'col-span-2' : ''"  v-if="scheduledShift != ''">
             {{ scheduledShift }}
         </div>
+        <div class="text-lg font-bold text-center mt-1 mb-1" :class="(scheduledShift=='') ? 'col-span-2' : ''" v-if="requestedShift != ''">{{ requestedShift }}</div>
     </div>
 </template>
 <script setup>
 import {ref} from 'vue'
 const props = defineProps({
     shifts: Array,
-    currentShift: Number,
     dayOfWeek:Number,
-    scheduledShift:String
+    scheduledShift:String,
+    dayIndex:Number
 })
-
+const menu = ref()
 const shiftIndex = ref(0)
-const selectedShift = ref(props.currentShift || -1)
 const label = ref('')
+
+const requestedShift = ref('')
+const emit = defineEmits(['ResourceRequest'])
+
+let shiftNames = [
+        { label: 'Ledig (Veto)', value: 'O', icon:'pi pi-ban', command: (item) => setResourceRequest(item)},
+        { label : 'A-pass', value: 'A', icon:'pi pi-sun', command: (item) => setResourceRequest(item)},
+        { label: 'C-pass', value:'C', icon:'pi pi-moon', command: (item) => setResourceRequest(item)},
+        { label: 'Natt', value:'N', icon:'pi pi-moon', command: (item) => setResourceRequest(item)},
+        { label: 'Skift?', value: 'X', icon:'pi pi-question-circle', command: (item) => setResourceRequest(item)}
+    ]
+    let contextMenuOptions = [shiftNames[0]]
+
+    const setResourceRequest = function(event){
+        requestedShift.value = event.item.value
+        emit('ResourceRequest', { 
+            dayIndex: props.dayIndex,
+            shiftRequest: event.item.value
+         })
+    }
+    console.log('Shifts in day', props.shifts[0].length)
+    props.shifts[0].forEach((item,index)=>{
+        let obj = shiftNames[index+1]
+        contextMenuOptions.push(obj)
+    })
+
+    const shiftsMenu = ref(contextMenuOptions);
+    
+    const onDayRightClick = (event, dayIndex) => {
+        menu.value.show(event);
+    };
 
 const getShiftsForDay = function(day){
     const results = props.shifts.filter(obj => {
         return obj.day == day;
     });
     return results
-}
-const toggleShift = function(){
-    let currentShifts = getShiftsForDay(props.dayOfWeek)
-    shiftIndex.value++
-    if(shiftIndex.value >= currentShifts.length){
-        shiftIndex.value = 0
-    }
-    label.value = currentShifts[shiftIndex.value].name
 }
 
 </script>
@@ -53,8 +74,22 @@ const toggleShift = function(){
         border-radius: 2px;
     }
 
-    .day-info div:nth-child(2){
-       
+    .request-missmatch{
+        animation-name: color;
+        animation-duration: 4s;
+        animation-iteration-count: infinite;
+    }
+
+    @keyframes color {
+    0% {
+        background-color: rgba(255,0,0,0)
+    }
+    50% {
+        background-color: rgba(255,0,0,0.9)
+    }
+    100% {
+        background-color: rgba(255,0,0,0)
+    }
     }
 
 </style>

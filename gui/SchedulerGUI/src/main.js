@@ -13,6 +13,7 @@ import ColumnGroup from 'primevue/columngroup';   // optional
 import Row from 'primevue/row';                   // optional
 import Calendar from 'primevue/calendar';
 import InputSwitch from 'primevue/inputswitch'
+import ContextMenu from 'primevue/contextmenu';
 
 
 //theme
@@ -40,5 +41,6 @@ app.component('Row', Row)
 app.component('Calendar', Calendar)
 app.component('Dialog', Dialog)
 app.component('InputSwitch', InputSwitch)
+app.component('ContextMenu', ContextMenu)
 
 app.mount('#app')

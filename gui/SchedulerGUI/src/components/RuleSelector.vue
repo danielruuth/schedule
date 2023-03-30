@@ -4,6 +4,8 @@ import { useDialog } from 'primevue/usedialog';
 import RulesModal from '../views/modals/rulesView.vue'
 const dialog = useDialog()
 
+const emit = defineEmits(['UpdateRules'])
+
 const props = defineProps({
   rules: Object
 })
@@ -24,6 +26,8 @@ const openModal = function(event, view){
             onUpdateRules: (e) => {
                 console.log('Emitting', e)
                 internalRules.value = e
+                //LEts bubble it
+                emit('UpdateRules', {'health': e.health, 'min_weekends': e.min_weekends})
             }
         }
     })

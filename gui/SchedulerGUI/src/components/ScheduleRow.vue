@@ -1,5 +1,7 @@
 <template>
+   
     <div class="grid gap-2 grid-cols-12 mt-2 schedule-row">
+        
         <div class="col-span-1 resource-name">
             <span class="text-sm font-bold capitalize">{{ resource.name }}</span>
         </div>
@@ -7,7 +9,7 @@
             <div v-for="n in week">
                 <div class="week grid grid-cols-7">
                     <div :class="'day day-' + i" v-for="i in 7">
-                        <ScheduleDay :shifts="shifts" :currentShift="0" :scheduledShift="getScheduledShift(n,i, scheduledShifts)" :dayOfWeek="i"/>
+                        <ScheduleDay @ResourceRequest="handleResourceRequest" :shifts="shifts" :dayIndex="getDayIndex(n,i)" :scheduledShift="getScheduledShift(n,i, scheduledShifts)" :dayOfWeek="i"/>
                     </div>
                 </div>
             </div>
@@ -16,7 +18,8 @@
 </template>
 <script setup>
 import ScheduleDay from './ScheduleDay.vue'
-
+import {ref} from 'vue'
+const emit = defineEmits(['updatedRequest'])
     const props = defineProps({
         resource:Object,
         week: Number,
@@ -28,6 +31,19 @@ import ScheduleDay from './ScheduleDay.vue'
         return 'A'
     }
 
+    const handleResourceRequest = function(event){
+        emit('updatedRequest', {request: event, resource: props.resource})
+    }
+
+    const getDayIndex = function(week, day){
+        let offset = 0;
+        if(week == 1){
+            offset = day-1
+        }else{
+            offset = ((week-1) * 7) + (day-1)
+        }
+        return offset
+    }
     const getScheduledShift = function(week, day, shifts){
         let offset = 0;
         if(week == 1){
