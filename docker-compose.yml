@@ -1,0 +1,35 @@
+version: "3.4"
+services:
+ vite:
+   image: node:alpine
+   container_name: vite_gui
+   entrypoint: /bin/sh
+   ports:
+     - 8000:8000
+   working_dir: /srv/app
+   tty: true
+ python:
+   image: python:alpine
+   container_name: flask_api
+   entrypoint: /bin/sh
+   ports:
+     - 5000:5000
+   working_dir: /server
+   tty: true
+ mongo:
+   image: mongo
+   container_name: mongo_storage
+   restart:always
+   enviroment:
+     MONGO_INITDB_ROOT_USERNAME: root
+     MONGO_INITDB_ROOT_PASSWORD: example
+ nginx:
+   image: nginx:alpine
+   container_name: nginx_proxy
+   restart: always
+   ports:
+     - "8080:80"
+   environment:
+   - NGINX_HOST=foobar.com
+   - NGINX_PORT=80
+   
