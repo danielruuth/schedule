@@ -195,7 +195,7 @@ class Scheduler:
                 variables, coeffs = self.add_soft_sequence_constraint(
                     model, works, hard_min, soft_min, min_cost, soft_max, hard_max,
                     max_cost,
-                    'shift_constraint(employee %i, shift %i)' % (e, shift))
+                    'shift_constraint(employee=%i,shift=%i)' % (e, shift))
                 obj_bool_vars.extend(variables)
                 obj_bool_coeffs.extend(coeffs)
 
@@ -208,7 +208,7 @@ class Scheduler:
                     variables, coeffs = self.add_soft_sum_constraint(
                         model, works, hard_min, soft_min, min_cost, soft_max,
                         hard_max, max_cost,
-                        'weekly_sum_constraint(employee %i, shift %i, week %i)' %
+                        'weekly_sum_constraint(employee=%i, shift=%i, week=%i)' %
                         (e, shift, w))
                     obj_int_vars.extend(variables)
                     obj_int_coeffs.extend(coeffs)
