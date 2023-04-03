@@ -4,7 +4,7 @@
         <div class="text-lg font-bold text-center mt-1 mb-1" :class="(requestedShift=='') ? 'col-span-2' : ''"  v-if="scheduledShift != ''">
             {{ scheduledShift }}
         </div>
-        <div class="text-lg font-bold text-center mt-1 mb-1" :class="(scheduledShift=='') ? 'col-span-2' : ''" v-if="requestedShift != ''">{{ requestedShift }}</div>
+        <div class="text-lg font-bold text-center mt-1 mb-1" :class="(scheduledShift=='') ? 'col-span-2' : ''" v-if="requestedShift != ''"> {{ requestedShift }}</div>
     </div>
 </template>
 <script setup>
@@ -22,27 +22,40 @@ const label = ref('')
 const requestedShift = ref('')
 const emit = defineEmits(['ResourceRequest'])
 
-let shiftNames = [
+/*let shiftNames = [
         { label: 'Ledig (Veto)', value: 'O', icon:'pi pi-ban', command: (item) => setResourceRequest(item)},
         { label : 'A-pass', value: 'A', icon:'pi pi-sun', command: (item) => setResourceRequest(item)},
         { label: 'C-pass', value:'C', icon:'pi pi-moon', command: (item) => setResourceRequest(item)},
         { label: 'Natt', value:'N', icon:'pi pi-moon', command: (item) => setResourceRequest(item)},
         { label: 'Skift?', value: 'X', icon:'pi pi-question-circle', command: (item) => setResourceRequest(item)}
-    ]
-    let contextMenuOptions = [shiftNames[0]]
+    ]*/
+    let contextMenuOptions = [{
+        label: 'Ledig (Veto)',
+        value: 'O',
+        icon: 'pi pi-ban',
+        commando: (item) => setResourceRequest(item)
+    }]
+    props.shifts.forEach((item,index)=>{
+        let obj = {
+            label: item.name,
+            icon: '',
+            value: item.name,
+            command: (item) => setResourceRequest(item)
+        }
+        contextMenuOptions.push(obj)
+    })
+    
 
     const setResourceRequest = function(event){
+        console.log('Setting resource request')
         requestedShift.value = event.item.value
         emit('ResourceRequest', { 
             dayIndex: props.dayIndex,
             shiftRequest: event.item.value
          })
     }
-    console.log('Shifts in day', props.shifts[0].length)
-    props.shifts[0].forEach((item,index)=>{
-        let obj = shiftNames[index+1]
-        contextMenuOptions.push(obj)
-    })
+    
+    
 
     const shiftsMenu = ref(contextMenuOptions);
     

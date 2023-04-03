@@ -13,14 +13,25 @@ import _ from 'lodash';
 Lets load the basics right away
 */
 
-const shifts = ref([
-    [3,3],
-    [3,3],
-    [3,3],
-    [3,3],
-    [3,2],
-    [2,2],
-    [2,2]
+const extendedShifts = ref([
+    {
+        name: 'A',
+        demand: [3,3,3,3,3,2,2],
+        start: [6, 45],
+        end: [16, 15]
+    },
+    {
+        name: 'C',
+        demand: [3,3,3,3,2,2,2],
+        start: [6, 45],
+        end: [16, 15]
+    },
+    {
+        name: 'Verksamhetstid',
+        demand: [1,1,0,1,0,0,0],
+        start: [8,0],
+        end: [16,30]
+    }
 ])
 
 const scheduledShifts = ref([])
@@ -28,6 +39,7 @@ const schedulePenalties = ref([])
 const scheduleStatus = ref('UNPLANNED')
 const scheduleConflicts = ref([])
 const showResult = ref(false)
+const shiftNames = ref()
 
 const resources = ref([
     {name: 'SSK 1'},
@@ -43,7 +55,7 @@ const weeks = ref(4)
 const errorMessage = ref(false)
 
 const scheduleRules = ref({
-    min_weekends: true,
+    min_weekends: false,
     health: false
 })
 
@@ -53,10 +65,10 @@ const updateShift = function(event){
     console.log(event, 'shifts updated')
 }
 
-const updatedDates = function(event){
-    console.log(event, 'dates updated')
-    weeks.value = event.weeks.value
-    startDate.value = event.startDate.value
+function updatedDates(event) {
+    console.log(event, 'dates updated');
+    weeks.value = event.weeks.value;
+    startDate.value = event.startDate.value;
 }
 
 const updatedRules = function(event){
@@ -101,7 +113,6 @@ const handleResourceRequests = function(request){
     const currentIndex = getCurrentRequest(newRequest);
 
     if( currentIndex !== false){
-        console.log('Replacing at index')
         scheduleRequests.value[currentIndex.index] = newRequest
     }else{
         console.log('No request for resource on that day in request list')
@@ -117,38 +128,45 @@ const getTotalShifts = function(index){
 const parsedSchedulePenalties = computed(()=>{
     let result = []
     schedulePenalties.value.forEach((row)=>{
-        result.push(parsePenalty(row))
+        result.push(parsePenaltyVar(row))
     })
     return result
 })
-const parsePenalty = function(penalty){
-    //weekly_sum_constraint(employee 0, shift 0, week 0)
-    let penaltyString = ''
-    if(typeof penalty != 'string'){
-        penaltyString = penalty.name
-    }else{
-        penaltyString = penalty
-    }
-    
-    const regExp = /\(([^)]+)\)/g;
-    const matches = [...penaltyString.match(regExp)].flat();
-    
-    if(matches.length < 1){
-        return ''
-    }else{
-        let string = matches[0]
-        let data = [...string]
-        let numbers = data.reduce((numString, element)=>{
-            let nums = '0123456789'
-            if(nums.includes(element)){
-                return numString + ',' + element
-            }
-            return numString
-        })
-        let numbersArray = numbers.split(',')
-        numbersArray.shift()
-        return [numbersArray,penaltyString]
-    }
+const parsePenaltyVar = function(penalty){
+    //weekly_sum_constraint(employee=2, shift=1, week=0)
+    //shift_constraint(employee=1, shift=2)
+    //transition (employee=1, day=2)
+    //excess_demand(shift=1, week=2, day=3)
+
+    //try{
+        let string = penalty.name
+        let regex = /^(\w+)\((\w+)=(\d+), (\w+)=(\d+), (\w+)=(\d+)\)$/;
+        let regex2 = /^(\w+)\((\w+)=(\d+), (\w+)=(\d+)/;
+
+        let matches1 = string.match(regex);
+        let matches2 = string.match(regex2)
+
+        
+        if(matches2){
+            let result = {}
+            result.type = matches2[1]
+            result[matches2[2]] = matches2[3]
+            result[matches2[4]] = matches2[5]
+
+            return result
+        }else if(matches1){
+            let result = {}
+            result.type = matches1[1]
+            result[matches1[2]] = matches1[3]
+            result[matches1[4]] = matches1[5]
+            result[matches1[6]] = matches1[7]
+
+            return result
+        }
+    /*}catch(error){
+        console.error('Could not parse', penalty)
+        return false
+    }*/
 }
 
 const generateSchedule = function(){
@@ -246,7 +264,7 @@ const generateSchedule = function(){
                 <ResourceSelector :resources="resources"/>
             </div>
             <div class="panel">
-                <ShiftSelector :shifts="shifts" @onAddedShift="updateShift"/>
+                <ShiftSelector :extendedShifts="extendedShifts" @AddedShift="updateShift"/>
             </div>
             <div class="panel">
                 <RuleSelector :rules="scheduleRules" @UpdateRules="updatedRules" />
@@ -254,7 +272,7 @@ const generateSchedule = function(){
         </div>
         <div class="grid">
             <div class="panel">
-                <Schedule @updateRequests="handleResourceRequests" :startDate="startDate" :weeks="weeks" :resources="resources" :shifts="shifts" :scheduledShifts="scheduledShifts"/>
+                <Schedule @updateRequests="handleResourceRequests" :startDate="startDate" :weeks="weeks" :resources="resources" :shifts="extendedShifts" :scheduledShifts="scheduledShifts"/>
             </div>
         </div>
         <div class="grid grid-cols-3 gap-2" v-if="showResult">
@@ -274,20 +292,8 @@ const generateSchedule = function(){
                 </div>
             </div>
             <div class="panel">
-                <span class="text-xs font-bold font-uppercase">Överträdelser:</span> {{ schedulePenalties.length }}
-                <!--div class="grid grid-cols-4 w-100">
-                    <div class="text-sm font-bold">Resurs</div>
-                    <div class="text-sm font-bold">Skift</div>
-                    <div class="text-sm font-bold">Vecka</div>
-                    <div class="text-sm font-bold">Namn</div>
-                    <div class="col-span-4 grid grid-cols-4" v-for="(penalty,index) in parsedSchedulePenalties">
-                        <div>{{ resources[penalty[0][0]].name }}</div>
-                        <div>{{ penalty[0][1] }}</div>
-                        <div>{{ penalty[0][2] }}</div>
-                        <div>{{ penalty[1] }}</div>
-                    </div>
-                    {{ schedulePenalties }}
-                </div-->
+                <span class="text-xs font-bold font-uppercase">Överträdelser:</span> <span class="text-xs font-light font-uppercase">{{ schedulePenalties.length }}</span>
+                {{ parsedSchedulePenalties }}
             </div>
         </div>
         <div class="grid grid-cols-10">

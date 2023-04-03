@@ -14,7 +14,7 @@ import Row from 'primevue/row';                   // optional
 import Calendar from 'primevue/calendar';
 import InputSwitch from 'primevue/inputswitch'
 import ContextMenu from 'primevue/contextmenu';
-
+import Chip from 'primevue/chip';
 
 //theme
 import './assets/base.scss'
@@ -42,5 +42,6 @@ app.component('Calendar', Calendar)
 app.component('Dialog', Dialog)
 app.component('InputSwitch', InputSwitch)
 app.component('ContextMenu', ContextMenu)
+app.component('Chip', Chip)
 
 app.mount('#app')

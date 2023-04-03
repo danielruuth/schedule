@@ -5,10 +5,12 @@ import ShiftModal from '../views/modals/shiftsView.vue'
 const dialog = useDialog()
 
 const props = defineProps({
-  shifts: Array
+  shifts: Array,
+  extendedShifts: Array
 })
 
 const internalShifts = ref(props.shifts)
+const internalExtendedShifts = ref(props.extendedShifts)
 
 const openModal = function(event, view){
     dialog.open(ShiftModal,{
@@ -18,11 +20,12 @@ const openModal = function(event, view){
             },
         },
         data:{
-            shifts:internalShifts || []
+            shifts:internalShifts || [],
+            extendedShifts: internalExtendedShifts || []
         },
         emits: {
             onAddedShift: (e) => {
-                internalShifts.value = e.value
+                internalExtendedShifts.value = e.names.value
             }
         }
     })
@@ -32,7 +35,10 @@ const openModal = function(event, view){
     <div class="grid grid-cols-12">
         <div class="col-span-11">
             <span class="text-xs font-bold uppercase">Skift: </span>
-            <span class="text-xs font-thin">{{ internalShifts[0].length }} skift</span>
+            <span class="text-xs font-thin">{{ internalExtendedShifts.length }} skift</span>
+            <div>
+                <span v-for="shift in internalExtendedShifts" class="mr-1 text-xs font-light">{{ shift.name }}, </span>
+            </div>
         </div>
         <div class="col-span-1 self-end">
             <span class="pi pi-ellipsis-h right-0 cursor-pointer" @click="openModal($event, 'shift')"></span>
