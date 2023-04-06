@@ -17,20 +17,20 @@ const extendedShifts = ref([
     {
         name: 'A',
         demand: [3,3,3,3,3,2,2],
-        start: [6, 45],
-        end: [16, 15]
+        start: "06:45",
+        end: "16:15"
     },
     {
         name: 'C',
         demand: [3,3,3,3,2,2,2],
-        start: [6, 45],
-        end: [16, 15]
+        start: "14:00",
+        end: "21:30"
     },
     {
         name: 'Verksamhetstid',
         demand: [1,1,0,1,0,0,0],
-        start: [8,0],
-        end: [16,30]
+        start: "08:00",
+        end: "16:30"
     }
 ])
 
@@ -66,18 +66,13 @@ const updateShift = function(event){
 }
 
 function updatedDates(event) {
-    console.log(event, 'dates updated');
     weeks.value = event.weeks.value;
     startDate.value = event.startDate.value;
 }
 
 const updatedRules = function(event){
-    console.log(event, 'rules updated')
     scheduleRules.value.health = event.health.value
     scheduleRules.value.min_weekends = event.min_weekends.value
-
-    console.log(`Setting healthschedule to ${event.health.value}`)
-    console.log(`Setting grouping weekends to ${event.min_weekends.value}`)
 }
 
 const getShiftCount = function(index, shift){
@@ -96,7 +91,6 @@ const getCurrentRequest = function(request){
     scheduleRequests.value.forEach((item, index)=>{
         //If same resource and same day
         if( item[0] == request[0] && item[2] == request[2] ){
-            console.log('Returning index', index)
             retval = { index: index }
         }
     })
@@ -107,9 +101,14 @@ const handleResourceRequests = function(request){
     let resourceIndex = resources.value.findIndex((element)=>{
         return element.name == request.resource.name
     })
-    let shiftNames = ['O', 'A', 'C', 'Natt', 'Skift?']
-    let shiftIndex = shiftNames.indexOf(request.request.shiftRequest);
+
+    let shiftIndex = request.request.shiftIndex
     let newRequest = [resourceIndex, shiftIndex, request.request.dayIndex, -2]
+
+    if(shiftIndex == 0){ //day off
+        newRequest[3] = -4 //Request day of overweight shift request
+    }
+
     const currentIndex = getCurrentRequest(newRequest);
 
     if( currentIndex !== false){
@@ -133,12 +132,8 @@ const parsedSchedulePenalties = computed(()=>{
     return result
 })
 const parsePenaltyVar = function(penalty){
-    //weekly_sum_constraint(employee=2, shift=1, week=0)
-    //shift_constraint(employee=1, shift=2)
-    //transition (employee=1, day=2)
-    //excess_demand(shift=1, week=2, day=3)
-
-    //try{
+    console.log('Penalty=>',penalty)
+    try{
         let string = penalty.name
         let regex = /^(\w+)\((\w+)=(\d+), (\w+)=(\d+), (\w+)=(\d+)\)$/;
         let regex2 = /^(\w+)\((\w+)=(\d+), (\w+)=(\d+)/;
@@ -163,10 +158,35 @@ const parsePenaltyVar = function(penalty){
 
             return result
         }
-    /*}catch(error){
-        console.error('Could not parse', penalty)
-        return false
-    }*/
+    }catch(e){
+        console.error('Fullfillment error=>', e)
+    }
+    
+}
+
+const hasEnoughRestTime = function (shiftA, shiftB, restTime = 11){
+  const restTimeInMilliseconds = restTime * 60 * 60 * 1000; // hours in milliseconds
+  const end1 = new Date(`1970-01-01T${shiftA.end}:00.000Z`);
+  const start2 = new Date(`1970-01-02T${shiftB.start}:00.000Z`);
+  const timeDifference = start2.getTime() - end1.getTime();
+  return timeDifference >= restTimeInMilliseconds;
+
+}
+
+const getPenalizedTransitions = function(shifts){
+    let penalized = []
+    shifts.forEach((shiftA, indexA)=>{
+        shifts.forEach((shiftB, indexB)=>{
+            if( !hasEnoughRestTime(shiftA, shiftB) ){
+                penalized.push(
+                    [indexA+1, indexB+1, 4] //+1 for the "O" off shift that will be unshifted to the array
+                )
+                console.log(`För lite vilotid mellan skift ${shiftA.name} och ${shiftB.name}`)
+            }
+        })
+    })
+    console.log('Penalized shifts', penalized)
+    return penalized;
 }
 
 const generateSchedule = function(){
@@ -180,25 +200,25 @@ const generateSchedule = function(){
         return output;
     };
 
-    let buildCoverDemans = (shifts) => {
-        let result = []
-        shifts.forEach((shift, index)=>{
-            if(!result[shift.day-1]){
-                result[shift.day-1] = []
-            }
-            result[shift.day-1].push(shift.resources)
-        })
-        return result;
-    }
+   
 
-    let shiftNames = ['A', 'C', 'Natt', 'Skift?']
     let shiftsArray = ['O'] //Off shift
+    let cover_demands = [ //mon->sun
+        [],
+        [],
+        [],
+        [],
+        [],
+        [],
+        []
+    ]
 
-    shifts.value[0].forEach((item, index)=>{
-        shiftsArray.push( shiftNames[index] )
+    extendedShifts.value.forEach((item, index)=>{
+        shiftsArray.push(item.name)
+        item.demand.forEach((cover, day)=>{
+            cover_demands[day][index] = cover
+        })
     })
-
-    
     let request = {
         "resources": desiredValue(resources.value, 'name'),
         "shifts": shiftsArray,
@@ -209,18 +229,18 @@ const generateSchedule = function(){
                 [0, 1, 1, 0, 2, 2, 0]
         ],
         "penalized_transitions": [],
-        "cover_demands": toRaw(shifts.value)
+        "cover_demands": cover_demands
         }
 
         if(scheduleRules.value.health == true){
-            //Night to morning has a penalty of 4. Hälsoschema
-            request['penalized_transitions'] = [[2, 1, 4]]
+            request['penalized_transitions'] = getPenalizedTransitions(extendedShifts.value)
         }
 
         const headers = {
         'Content-Type': 'application/json',
     }
     
+    //axios.post('/api/getschedule', request, headers)
     axios.post('http://localhost:5000/api/getschedule', request, headers)
     .then((result)=>{
             const data = result.data

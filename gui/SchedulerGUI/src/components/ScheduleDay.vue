@@ -4,7 +4,9 @@
         <div class="text-lg font-bold text-center mt-1 mb-1" :class="(requestedShift=='') ? 'col-span-2' : ''"  v-if="scheduledShift != ''">
             {{ scheduledShift }}
         </div>
-        <div class="text-lg font-bold text-center mt-1 mb-1" :class="(scheduledShift=='') ? 'col-span-2' : ''" v-if="requestedShift != ''"> {{ requestedShift }}</div>
+        <div class="text-lg font-bold text-center mt-1 mb-1" :class="(scheduledShift=='') ? 'col-span-2' : ''" v-if="requestedShift != ''">
+            {{ requestedShift }}
+        </div>
     </div>
 </template>
 <script setup>
@@ -33,25 +35,26 @@ const emit = defineEmits(['ResourceRequest'])
         label: 'Ledig (Veto)',
         value: 'O',
         icon: 'pi pi-ban',
-        commando: (item) => setResourceRequest(item)
+        command: (item) => setResourceRequest({item:{ label:'Ledig (Veto)', value:'O' }},0)
     }]
     props.shifts.forEach((item,index)=>{
         let obj = {
             label: item.name,
             icon: '',
             value: item.name,
-            command: (item) => setResourceRequest(item)
+            command: (item) => setResourceRequest(item,index)
         }
         contextMenuOptions.push(obj)
     })
     
 
-    const setResourceRequest = function(event){
+    const setResourceRequest = function(event, index){
         console.log('Setting resource request')
         requestedShift.value = event.item.value
         emit('ResourceRequest', { 
             dayIndex: props.dayIndex,
-            shiftRequest: event.item.value
+            shiftRequest: event.item.value,
+            shiftIndex: index
          })
     }
     

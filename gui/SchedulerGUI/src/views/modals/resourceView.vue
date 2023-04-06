@@ -14,8 +14,19 @@
             }
         )
         resource_name.value = ''
-        console.log('We are emitting', resources)
         emit('AddedResources', resources)
+    }
+    const removeResource = function(index){
+        console.log(index)
+        resources.value.splice(index,1)
+        emit('AddedResources', resources)
+    }
+    const onCellEditComplete = function (event){
+        if(event.newValue != event.value){
+            console.log(event)
+            resources.value[event.index] = {name: event.newValue }
+            emit('AddedResources', resources)
+        }
     }
 </script>
 <template>
@@ -30,8 +41,17 @@
         </div>
         <div class="col-span-10">
             <span class="text-xs font-bold uppercase">Resurser </span>
-            <DataTable :value="resources" class="p-datatable-sm" scrollable scrollHeight="200px">
-                <Column field="name" header="Resurs"></Column>
+            <DataTable :value="resources" class="p-datatable-sm" editMode="cell" @cell-edit-complete="onCellEditComplete" scrollable scrollHeight="200px">
+                <Column field="name" header="Resurs">
+                    <template #editor="{ data, field }">
+                        <input type="text" v-model="data[field]" class="form-input rounded-md bg-gray-100 border-transparent w-full" autofocus />    
+                    </template>
+                </Column>
+                <Column style="width:65px">
+                    <template #body="{index}">
+                        <Button icon="pi pi-trash" plain text rounded aria-label="Radera" @click="removeResource(index)"/>    
+                    </template>
+                </Column>
             </DataTable>
         </div>
     </div>

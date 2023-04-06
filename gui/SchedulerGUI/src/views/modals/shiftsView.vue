@@ -30,7 +30,7 @@
     
 
     const addShift = function(){
-        shiftNames.value.push({name: shift.value.name, start: shift.value.start, end: shift.value.end})
+        shiftNames.value.push({name: shift.value.name, start: shift.value.start, end: shift.value.end, demand: [0,0,0,0,0,0,0]})
     }
 
     const number_shifts = computed(()=>{
