@@ -299,7 +299,12 @@ class Scheduler:
                             "solver": False
                         })
                     else:
-                        retval_penalties.append('%s fulfilled, gain=%i' % (var.Name(), -penalty))
+                        #retval_penalties.append('%s fulfilled, gain=%i' % (var.Name(), -penalty)) #
+                        retval_penalties.append({
+                            "name": var.Name(),
+                            "penalty": -penalty,
+                            "solver": False
+                        })
 
             for i, var in enumerate(obj_int_vars):
                 if solver.Value(var) > 0:

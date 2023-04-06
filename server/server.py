@@ -79,4 +79,4 @@ def generate_schedule():
     solution = s.solve()
     return solution
 
-app.run()
+app.run(host='0.0.0.0')
