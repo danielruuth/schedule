@@ -37,7 +37,7 @@ const openModal = function(event, view){
             <span class="text-xs font-bold uppercase">Skift: </span>
             <span class="text-xs font-thin">{{ internalExtendedShifts.length }} skift</span>
             <div>
-                <span v-for="shift in internalExtendedShifts" class="mr-1 text-xs font-light">{{ shift.name }}, </span>
+                <span v-for="shift in internalExtendedShifts" class="text-xs font-thin">{{ shift.name }} ({{ shift.start }} - {{ shift.end }}), </span>
             </div>
         </div>
         <div class="col-span-1 self-end">

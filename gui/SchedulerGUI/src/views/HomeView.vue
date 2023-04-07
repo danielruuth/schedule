@@ -12,6 +12,7 @@ import _ from 'lodash';
 /*
 Lets load the basics right away
 */
+const loading = ref(false)
 
 const extendedShifts = ref([
     {
@@ -191,6 +192,8 @@ const getPenalizedTransitions = function(shifts){
 
 const generateSchedule = function(){
 
+    loading.value = true
+
     showResult.value = false;
     let desiredValue = (array,key) => {
         let output = [];
@@ -240,8 +243,8 @@ const generateSchedule = function(){
         'Content-Type': 'application/json',
     }
     
-    //axios.post('/api/getschedule', request, headers)
-    axios.post('http://localhost:5000/api/getschedule', request, headers)
+    axios.post('/api/getschedule', request, headers)
+    //axios.post('http://localhost:5000/api/getschedule', request, headers)
     .then((result)=>{
             const data = result.data
 
@@ -257,6 +260,7 @@ const generateSchedule = function(){
 
                 showResult.value = true
             }
+            loading.value = false
 
     })
     .catch((error)=>{
@@ -267,9 +271,26 @@ const generateSchedule = function(){
 }
 
 </script>
+<style scoped>
+.loader{
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%, -50%);
+    width: 60px;
+    height: 60px;
+    padding: 5px;
+    z-index: 1000;
+    
+}
+</style>
 
 <template>
     <div class="grid space-y-8">
+        <div class="loader" v-if="loading">
+            <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)"
+        animationDuration=".5s" aria-label="Laddar" />
+    </div>
         <Dialog v-model:visible="errorMessage" modal header="Hoppsan" :style="{ width: '50vw' }">
             <p class="font-thin text-md">
                Inga lösningar hittades med dessa inställningar.<br />
