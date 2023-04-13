@@ -7,12 +7,28 @@ import json
 from ortools.sat.python import cp_model
 from google.protobuf import text_format
 
-class Scheduler:
+class Scheduler(cp_model.CpSolverSolutionCallback):
     def __init__(self, params):
         self._params = params
-        
-        
-    def negated_bounded_span(works, start, length):
+        self._solution_count = 0
+        self._solution_limit = params["limit"]
+
+        cp_model.CpSolverSolutionCallback.__init__(self)
+         
+    def negated_bounded_span(self, works, start, length):
+        """Filters an isolated sub-sequence of variables assined to True.
+        Extract the span of Boolean variables [start, start + length), negate them,
+        and if there is variables to the left/right of this span, surround the span by
+        them in non negated form.
+        Args:
+            works: a list of variables to extract the span from.
+            start: the start to the span.
+            length: the length of the span.
+        Returns:
+            a list of variables which conjunction will be false if the sub-list is
+            assigned to True, and correctly bounded by variables assigned to False,
+            or by the start or end of works.
+        """   
         sequence = []
         # Left border (start of works, or works[start - 1])
         if start > 0:
@@ -25,21 +41,44 @@ class Scheduler:
         return sequence
 
 
-    def add_soft_sequence_constraint(self, model, works, hard_min, soft_min, min_cost,
-                                     soft_max, hard_max, max_cost, prefix):
+    def add_soft_sequence_constraint(self, model, works, hard_min, soft_min, min_cost, soft_max, hard_max, max_cost, prefix):
+        """Sequence constraint on true variables with soft and hard bounds.
+        This constraint look at every maximal contiguous sequence of variables
+        assigned to true. If forbids sequence of length < hard_min or > hard_max.
+        Then it creates penalty terms if the length is < soft_min or > soft_max.
+        Args:
+            model: the sequence constraint is built on this model.
+            works: a list of Boolean variables.
+            hard_min: any sequence of true variables must have a length of at least
+            hard_min.
+            soft_min: any sequence should have a length of at least soft_min, or a
+            linear penalty on the delta will be added to the objective.
+            min_cost: the coefficient of the linear penalty if the length is less than
+            soft_min.
+            soft_max: any sequence should have a length of at most soft_max, or a linear
+            penalty on the delta will be added to the objective.
+            hard_max: any sequence of true variables must have a length of at most
+            hard_max.
+            max_cost: the coefficient of the linear penalty if the length is more than
+            soft_max.
+            prefix: a base name for penalty literals.
+        Returns:
+            a tuple (variables_list, coefficient_list) containing the different
+            penalties created by the sequence constraint.
+        """
         cost_literals = []
         cost_coefficients = []
 
         # Forbid sequences that are too short.
         for length in range(1, hard_min):
             for start in range(len(works) - length + 1):
-                model.AddBoolOr(negated_bounded_span(works, start, length))
+                model.AddBoolOr(self.negated_bounded_span(works, start, length))
 
         # Penalize sequences that are below the soft limit.
         if min_cost > 0:
             for length in range(hard_min, soft_min):
                 for start in range(len(works) - length + 1):
-                    span = negated_bounded_span(works, start, length)
+                    span = self.negated_bounded_span(works, start, length)
                     name = ': under_span(start=%i, length=%i)' % (start, length)
                     lit = model.NewBoolVar(prefix + name)
                     span.append(lit)
@@ -53,7 +92,7 @@ class Scheduler:
         if max_cost > 0:
             for length in range(soft_max + 1, hard_max + 1):
                 for start in range(len(works) - length + 1):
-                    span = negated_bounded_span(works, start, length)
+                    span = self.negated_bounded_span(works, start, length)
                     name = ': over_span(start=%i, length=%i)' % (start, length)
                     lit = model.NewBoolVar(prefix + name)
                     span.append(lit)
@@ -69,9 +108,31 @@ class Scheduler:
         return cost_literals, cost_coefficients
 
 
-    def add_soft_sum_constraint(self, model, works, hard_min, soft_min, min_cost,
-                                soft_max, hard_max, max_cost, prefix):
-
+    def add_soft_sum_constraint(self, model, works, hard_min, soft_min, min_cost, soft_max, hard_max, max_cost, prefix):
+        """Sum constraint with soft and hard bounds.
+        This constraint counts the variables assigned to true from works.
+        If forbids sum < hard_min or > hard_max.
+        Then it creates penalty terms if the sum is < soft_min or > soft_max.
+        Args:
+            model: the sequence constraint is built on this model.
+            works: a list of Boolean variables.
+            hard_min: any sequence of true variables must have a sum of at least
+            hard_min.
+            soft_min: any sequence should have a sum of at least soft_min, or a linear
+            penalty on the delta will be added to the objective.
+            min_cost: the coefficient of the linear penalty if the sum is less than
+            soft_min.
+            soft_max: any sequence should have a sum of at most soft_max, or a linear
+            penalty on the delta will be added to the objective.
+            hard_max: any sequence of true variables must have a sum of at most
+            hard_max.
+            max_cost: the coefficient of the linear penalty if the sum is more than
+            soft_max.
+            prefix: a base name for penalty variables.
+        Returns:
+            a tuple (variables_list, coefficient_list) containing the different
+            penalties created by the sequence constraint.
+        """
         cost_variables = []
         cost_coefficients = []
         sum_var = model.NewIntVar(hard_min, hard_max, '')
@@ -98,6 +159,15 @@ class Scheduler:
             cost_coefficients.append(max_cost)
 
         return cost_variables, cost_coefficients
+    def on_solution_callback(self):
+        self._solution_count += 1
+        print('Found %i solutions' % self._solution_count)
+        if self._solution_count >= self._solution_limit:
+            print('Stop search after %i solutions' % self._solution_limit)
+            self.StopSearch()
+    
+    def solution_count(self):
+        return self._solution_count
 
     def solve(self):
         """Solves the shift scheduling problem."""
@@ -107,45 +177,45 @@ class Scheduler:
         shifts = self._params['shifts'] #['O', 'A', 'C'] # Off, day, night
 
         # Fixed assignment: (employee, shift, day).
-        # This fixes the first 2 days of the schedule.
-        # This should come from params
         fixed_assignments = self._params['fixed_assignments']
 
         # Request: (employee, shift, day, weight)
         # A negative weight indicates that the employee desire this assignment.
+         # Employee 3 does not want to work on the first Saturday (negative weight
+        # for the Off shift).
+        # (3, 0, 5, -2),
+        # Employee 5 wants a night shift on the second Thursday (negative weight).
+        # (5, 3, 10, -2),
+        # Employee 2 does not want a night shift on the first Friday (positive
+        # weight).
+        # (2, 3, 4, 4)
         requests = self._params['requests']
 
         # Shift constraints on continuous sequence :
         #     (shift, hard_min, soft_min, min_penalty,
         #             soft_max, hard_max, max_penalty)
+        # One or two consecutive days of rest, this is a hard constraint.
+        # (0, 1, 1, 0, 2, 2, 0),
+        # between 2 and 3 consecutive days of night shifts, 1 and 4 are
+        # possible but penalized.
+        # (3, 1, 2, 20, 3, 4, 5),
         shift_constraints = self._params['shift_constraints']
 
         # Weekly sum constraints on shifts days:
         #     (shift, hard_min, soft_min, min_penalty,
         #             soft_max, hard_max, max_penalty)
-        weekly_sum_constraints = [
-            # Constraints on rests per week.
-             # 0 = ledig dag, 
-             # 1 = absolut minst en ledig dag, 
-             # 2 = ok med 2
-             # 7 straff vid för få lediga dagar
-             # 2 = helst max två lediga dagar, 
-             # 3 = absolut mest 3 lediga dagar
-             # 4 = straff vid för många dagar ledigt
-            (0, 1, 2, 7, 2, 3, 4),
-            # 2 = kvälls skift
-            # 0 = ok med inga kvällsskift
-            # 1 = helst ett kvällsskift
-            # 3 = straff vid för få kvällsskift
-            # 4 = max 4 kvällspass
-            # 4 = max 4 kvällspass
-            # 0 = går inte med mer än 4 kvällspass //hard
-            # At least 1 evening shift per week (penalized). At most 4 (hard).
-            (2, 0, 1, 3, 4, 4, 0),
-        ]
+        # Constraints on rests per week.
+        #(0, 1, 2, 7, 2, 3, 4),
+        # At least 1 night shift per week (penalized). At most 4 (hard).
+        # (3, 0, 1, 3, 4, 4, 0),
+        weekly_sum_constraints = self._params['weekly_sum_constraints']
 
         # Penalized transitions:
         #     (previous_shift, next_shift, penalty (0 means forbidden))
+        # Afternoon to night has a penalty of 4.
+        #(2, 3, 4),
+        # Night to morning is forbidden.
+        #(3, 1, 0),
         penalized_transitions = self._params['penalized_transitions']
         
 
@@ -154,7 +224,7 @@ class Scheduler:
         weekly_cover_demands = self._params['cover_demands']
 
         # Penalty for exceeding the cover constraint per shift type.
-        excess_cover_penalties = (2, 2, 5, 5) #this needs to represent per shift
+        excess_cover_penalties = self._params['excess_cover_penalties'] #(2, 2, 5, 5) #Denna måste representera per shift
 
         num_days = num_weeks * 7
         num_shifts = len(shifts)
@@ -195,7 +265,7 @@ class Scheduler:
                 variables, coeffs = self.add_soft_sequence_constraint(
                     model, works, hard_min, soft_min, min_cost, soft_max, hard_max,
                     max_cost,
-                    'shift_constraint(employee=%i,shift=%i)' % (e, shift))
+                    'shift_constraint(employee=%i, shift=%i)' % (e, shift))
                 obj_bool_vars.extend(variables)
                 obj_bool_coeffs.extend(coeffs)
 
@@ -271,7 +341,7 @@ class Scheduler:
         # Solve the model.
         solver = cp_model.CpSolver()
         solution_printer = cp_model.ObjectiveSolutionPrinter()
-        status = solver.Solve(model, solution_printer)
+        status = solver.Solve(model, self)
         
         # Print solution.
         retval_shifts = []

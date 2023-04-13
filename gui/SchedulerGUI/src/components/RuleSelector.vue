@@ -7,10 +7,12 @@ const dialog = useDialog()
 const emit = defineEmits(['UpdateRules'])
 
 const props = defineProps({
-  rules: Object
+  rules: Object,
+  shifts: Array
 })
 
 const internalRules = ref(props.rules)
+
 
 const openModal = function(event, view){
     dialog.open(RulesModal, {
@@ -20,7 +22,8 @@ const openModal = function(event, view){
             },
         },
         data:{
-            rules:internalRules || {}
+            rules:internalRules || {},
+            shifts: props.shifts
         },
         emits: {
             onUpdateRules: (e) => {

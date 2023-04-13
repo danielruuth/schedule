@@ -59,8 +59,6 @@ def generate_schedule():
 # }
 
     post_data = request.get_json(force=True)
-    print(post_data)
-
     post_params = {
         'resources': post_data['resources'],
         'shifts': post_data['shifts'],
@@ -69,12 +67,11 @@ def generate_schedule():
         'requests': [tuple(sub_array) for sub_array in post_data['requests']],
         'shift_constraints':  [tuple(sub_array) for sub_array in post_data['shift_constraints']],
         'cover_demands': [tuple(sub_array) for sub_array in post_data['cover_demands']],
-        'penalized_transitions': [tuple(sub_array) for sub_array in post_data['penalized_transitions']]
-    }
-
-    print(post_params)
-    
-        
+        'penalized_transitions': [tuple(sub_array) for sub_array in post_data['penalized_transitions']],
+        'weekly_sum_constraints':[tuple(sub_array) for sub_array in post_data['weekly_sum_constraints']],
+        'excess_cover_penalties':tuple(post_data['excess_cover_penalties']),
+        'limit':post_data['result_limit']
+    }   
     s = Scheduler(post_params)
     solution = s.solve()
     return solution

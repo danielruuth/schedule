@@ -1,6 +1,7 @@
 <script setup>
     import ScheduleHeader from './ScheduleHeader.vue';
     import ScheduleRow from './ScheduleRow.vue';
+    import ScheduleFooter from './ScheduleFooter.vue';
     import {ref} from 'vue'
 
     const menu = ref();
@@ -23,5 +24,6 @@
     <div>
         <ScheduleHeader :startDate="startDate" :weeks="weeks"/>
         <ScheduleRow @updatedRequest="bubbleEvent" :week="weeks" v-for="(resource,index) in resources" :resource="resource" :shifts="shifts" :scheduledShifts="scheduledShifts[index] || []" />
+        <ScheduleFooter :weeks="weeks" :shifts="shifts" :scheduledShifts="scheduledShifts" />
     </div>
 </template>

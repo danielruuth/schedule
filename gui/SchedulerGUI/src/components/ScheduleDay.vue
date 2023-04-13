@@ -37,6 +37,7 @@ const emit = defineEmits(['ResourceRequest'])
         icon: 'pi pi-ban',
         command: (item) => setResourceRequest({item:{ label:'Ledig (Veto)', value:'O' }},0)
     }]
+    let requests = []
     props.shifts.forEach((item,index)=>{
         let obj = {
             label: item.name,
@@ -44,17 +45,41 @@ const emit = defineEmits(['ResourceRequest'])
             value: item.name,
             command: (item) => setResourceRequest(item,index)
         }
-        contextMenuOptions.push(obj)
+        requests.push(obj)
+    })
+
+    
+    let assignments = []
+    props.shifts.forEach((item,index)=>{
+        let obj = {
+            label: item.name,
+            icon: '',
+            value: item.name,
+            command: (item) => setResourceRequest(item,index, true)
+        }
+        assignments.push(obj)
+    })
+    contextMenuOptions.push({
+        label: 'Önskemål',
+        items: requests
+    })
+    contextMenuOptions.push({
+        separator: true
+    })
+    contextMenuOptions.push({
+        label: 'Fast uppdrag',
+        items: assignments
     })
     
 
-    const setResourceRequest = function(event, index){
+    const setResourceRequest = function(event, index, fixed = false){
         console.log('Setting resource request')
         requestedShift.value = event.item.value
         emit('ResourceRequest', { 
             dayIndex: props.dayIndex,
             shiftRequest: event.item.value,
-            shiftIndex: index
+            shiftIndex: index+1,
+            type: fixed ? 'FIXED' : 'REQUEST'
          })
     }
     
