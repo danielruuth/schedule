@@ -16,6 +16,7 @@ import InputSwitch from 'primevue/inputswitch'
 import ContextMenu from 'primevue/contextmenu';
 import Chip from 'primevue/chip';
 import ProgressSpinner from 'primevue/progressspinner';
+import ScrollPanel from 'primevue/scrollpanel';
 
 //theme
 import './assets/base.scss'
@@ -45,5 +46,6 @@ app.component('InputSwitch', InputSwitch)
 app.component('ContextMenu', ContextMenu)
 app.component('Chip', Chip)
 app.component('ProgressSpinner', ProgressSpinner)
+app.component('ScrollPanel', ScrollPanel)
 
 app.mount('#app')

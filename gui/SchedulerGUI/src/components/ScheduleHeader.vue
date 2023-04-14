@@ -6,7 +6,7 @@
         <div :class="'col-span-11 grid gap-2 grid-row-1 grid-cols-' + weeks">
             <div v-for="n in weeks">
                 <div class="week grid grid-cols-7">
-                    <div :class="'day day-' + i" v-for="i=0 in 7">
+                    <div :class="'day day-info dayIndex-'+ getDayIndex(n, i) +' day-' + i" v-for="i=0 in 7">
                         <span class="text-xs font-light uppercase text-gray-500">{{ getDayFromOffset(n, i-1).format('ddd') }}</span>
                         <span class="text-lg font-bold uppercase">{{ getDayFromOffset(n, i-1).format('DD') }}</span>
                     </div>
@@ -23,6 +23,16 @@
         startDate: String,
         weeks: Number
     })
+
+    const getDayIndex = function(week, day){
+        let offset = 0;
+        if(week == 1){
+            offset = day-1
+        }else{
+            offset = ((week-1) * 7) + (day-1)
+        }
+        return offset
+    }
 
     const getDayFromOffset = function(week, day){
         let date = moment(props.startDate).clone().add(week-1, 'weeks').add(day, 'days')

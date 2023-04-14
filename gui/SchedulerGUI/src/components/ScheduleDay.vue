@@ -1,6 +1,6 @@
 <template>
     <ContextMenu ref="menu" :model="shiftsMenu" />
-    <div @contextmenu="onDayRightClick" class="day-info grid grid-cols-2 gap-1" :class="(scheduledShift != requestedShift && scheduledShift != '' && requestedShift != '') ? 'request-missmatch' : ''">
+    <div @mouseover="highlitePeerDays()" @contextmenu="onDayRightClick" class="day-info grid grid-cols-2 gap-1" :class="(scheduledShift != requestedShift && scheduledShift != '' && requestedShift != '') ? 'request-missmatch dayIndex-' + dayIndex : 'dayIndex-' + dayIndex ">
         <div class="text-lg font-bold text-center mt-1 mb-1" :class="(requestedShift=='') ? 'col-span-2' : ''"  v-if="scheduledShift != ''">
             {{ scheduledShift }}
         </div>
@@ -24,13 +24,24 @@ const label = ref('')
 const requestedShift = ref('')
 const emit = defineEmits(['ResourceRequest'])
 
-/*let shiftNames = [
-        { label: 'Ledig (Veto)', value: 'O', icon:'pi pi-ban', command: (item) => setResourceRequest(item)},
-        { label : 'A-pass', value: 'A', icon:'pi pi-sun', command: (item) => setResourceRequest(item)},
-        { label: 'C-pass', value:'C', icon:'pi pi-moon', command: (item) => setResourceRequest(item)},
-        { label: 'Natt', value:'N', icon:'pi pi-moon', command: (item) => setResourceRequest(item)},
-        { label: 'Skift?', value: 'X', icon:'pi pi-question-circle', command: (item) => setResourceRequest(item)}
-    ]*/
+const highlitePeerDays = function(){
+    //Remove prev. highlite
+    let highlitedElements = [].slice.call(document.getElementsByClassName( 'day-info'))
+    let highlitedElementsLength = highlitedElements.length
+    //Set new highlite
+    let toBeHighlited = [].slice.call(document.getElementsByClassName( 'dayIndex-' + props.dayIndex ))
+    let toBeHighlitedLength = toBeHighlited.length
+
+    for(let r = 0; r < highlitedElementsLength; r++){
+        highlitedElements[r].classList.remove('highlite-row-class')
+    }
+
+    for(let r = 0; r < toBeHighlitedLength; r++){
+        toBeHighlited[r].classList.add('highlite-row-class')
+    }
+}
+
+
     let contextMenuOptions = [{
         label: 'Ledig (Veto)',
         value: 'O',
@@ -99,7 +110,10 @@ const getShiftsForDay = function(day){
 }
 
 </script>
-<style scoped>
+<style>
+    .highlite-row-class{
+        background-color: rgba(255, 209, 0, .2);
+    }
     .day-info{
         width:100%;
         height:100%;

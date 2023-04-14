@@ -8,6 +8,7 @@ import moment from 'moment';
 import {ref, computed} from 'vue';
 import axios from 'axios';
 import _ from 'lodash';
+import ViewMore from '../components/ViewMore.vue';
 
 
 /*
@@ -166,28 +167,6 @@ const handleRequestOrFixed = function(request){
     }
 }
 
-
-/*const handleResourceRequests = function(request){
-    let resourceIndex = resources.value.findIndex((element)=>{
-        return element.name == request.resource.name
-    })
-
-    let shiftIndex = request.request.shiftIndex
-    let newRequest = [resourceIndex, shiftIndex, request.request.dayIndex, -4]
-
-    if(shiftIndex == 0){ //day off
-        newRequest[3] = -8 //Request day of overweight shift request
-    }
-
-    const currentIndex = getCurrentRequest(newRequest);
-
-    if( currentIndex !== false){
-        scheduleRequests.value[currentIndex.index] = newRequest
-    }else{
-        console.log('No request for resource on that day in request list')
-        scheduleRequests.value.push(newRequest)
-    }
-}*/
 
 const getTotalShifts = function(index){
     try{
@@ -354,7 +333,7 @@ const generateSchedule = function(){
             //shift, hard_min, soft_min, min_penalty, soft_max, hard_max, max_penalty
             [0, 1, 2, 7, 2, 3, 4], //Ledig
             [1, 1, 2, 7, 2, 3, 4], //A skift
-            [3, 0, 1, 7, 2, 3, 4], //VT skift
+            [3, 0, 1, 1, 2, 2, 0], //VT skift
             [2, 0, 1, 3, 4, 4, 0] // C skift
         ],
         "penalized_transitions": [],
@@ -446,7 +425,9 @@ const generateSchedule = function(){
         </div>
         <div class="grid">
             <div class="panel">
-                <Schedule @updateRequests="handleRequestOrFixed" :startDate="startDate" :weeks="weeks" :resources="resources" :shifts="extendedShifts" :scheduledShifts="scheduledShifts"/>
+                <ScrollPanel style="width: 100%;">
+                    <Schedule @updateRequests="handleRequestOrFixed" :startDate="startDate" :weeks="weeks" :resources="resources" :shifts="extendedShifts" :scheduledShifts="scheduledShifts"/>
+                </ScrollPanel>
             </div>
         </div>
         <div class="grid grid-cols-3 gap-2" v-if="showResult">
@@ -474,68 +455,72 @@ const generateSchedule = function(){
                 <div v-if="schedulePenalties.length == 0">
                     Inga överträdelser!
                 </div>
-                <table class="w-full zebra" cellpadding="2" v-if="weeklySumConstraints.length > 0">
-                    <thead>
-                        <tr>
-                            <th colspan="4" class="text-xs font-bold text-left">Antal skift per vecka</th>
-                        </tr>
-                        <tr>
-                            <th class="text-xs font-bold text-left">Detaljer</th>
-                            <th class="text-xs font-bold text-left">Resurs</th>
-                            <th class="text-xs font-bold text-left">Skift</th>
-                            <th class="text-xs font-bold text-left">Vecka</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="penalty in weeklySumConstraints">
-                            <td class="text-xs font-thin">{{ penalty.hint }}</td>
-                            <td class="text-xs font-thin">{{ resources[penalty.employee].name }}</td>
-                            <td class="text-xs font-thin">{{ extendedShifts[penalty.shift-1].name }}</td>
-                            <td class="text-xs font-thin">{{ penalty.week }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-                <table class="w-full zebra mt-4" cellpadding="2" v-if="excessDemands.length > 0">
-                    <thead>
-                        <tr>
-                            <th colspan="3" class="text-xs font-bold text-left">Överplanerat skift</th>
-                        </tr>
-                        <tr>
-                            <th class="text-xs font-bold text-left">Överträdelse</th>
-                            <th class="text-xs font-bold text-left">Skift</th>
-                            <th class="text-xs font-bold text-left">Vecka</th>
-                            
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="penalty in excessDemands">
-                            <td class="text-xs font-thin">{{ penalty.type }}</td>
-                            <td class="text-xs font-thin">{{ extendedShifts[penalty.shift-1].name }}</td>
-                            <td class="text-xs font-thin">{{ penalty.week }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                <ViewMore v-else>
+                    <template #content>
+                        <table class="w-full zebra" cellpadding="2" v-if="weeklySumConstraints.length > 0">
+                            <thead>
+                                <tr>
+                                    <th colspan="4" class="text-xs font-bold text-left">Antal skift per vecka</th>
+                                </tr>
+                                <tr>
+                                    <th class="text-xs font-bold text-left">Detaljer</th>
+                                    <th class="text-xs font-bold text-left">Resurs</th>
+                                    <th class="text-xs font-bold text-left">Skift</th>
+                                    <th class="text-xs font-bold text-left">Vecka</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="penalty in weeklySumConstraints">
+                                    <td class="text-xs font-thin">{{ penalty.hint }}</td>
+                                    <td class="text-xs font-thin">{{ resources[penalty.employee].name }}</td>
+                                    <td class="text-xs font-thin">{{ extendedShifts[penalty.shift-1].name }}</td>
+                                    <td class="text-xs font-thin">{{ penalty.week }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        <table class="w-full zebra mt-4" cellpadding="2" v-if="excessDemands.length > 0">
+                            <thead>
+                                <tr>
+                                    <th colspan="3" class="text-xs font-bold text-left">Överplanerat skift</th>
+                                </tr>
+                                <tr>
+                                    <th class="text-xs font-bold text-left">Överträdelse</th>
+                                    <th class="text-xs font-bold text-left">Skift</th>
+                                    <th class="text-xs font-bold text-left">Vecka</th>
+                                    
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="penalty in excessDemands">
+                                    <td class="text-xs font-thin">{{ penalty.type }}</td>
+                                    <td class="text-xs font-thin">{{ extendedShifts[penalty.shift-1].name }}</td>
+                                    <td class="text-xs font-thin">{{ penalty.week }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
 
-                <table class="w-full zebra mt-4" cellpadding="2" v-if="shiftConstraints.length > 0">
-                    <thead>
-                        <tr>
-                            <th colspan="3" class="text-xs font-bold text-left">Skift begränsningar</th>
-                        </tr>
-                        <tr>
-                            <th class="text-xs font-bold text-left">Resurs</th>
-                            <th class="text-xs font-bold text-left">Skift</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr v-for="penalty in shiftConstraints">
-                            <td class="text-xs font-thin">{{ penalty.employee }}</td>
-                            <td class="text-xs font-thin">{{ penalty.shift }}</td>
-                        </tr>
-                    </tbody>
-                </table>
+                        <table class="w-full zebra mt-4" cellpadding="2" v-if="shiftConstraints.length > 0">
+                            <thead>
+                                <tr>
+                                    <th colspan="3" class="text-xs font-bold text-left">Skift begränsningar</th>
+                                </tr>
+                                <tr>
+                                    <th class="text-xs font-bold text-left">Resurs</th>
+                                    <th class="text-xs font-bold text-left">Skift</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="penalty in shiftConstraints">
+                                    <td class="text-xs font-thin">{{ penalty.employee }}</td>
+                                    <td class="text-xs font-thin">{{ penalty.shift }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </template>
+                </ViewMore>
             </div>
         </div>
-        <div class="grid grid-cols-10">
+        <div class="grid grid-cols-10 pb-8">
             <div class="col-span-8"></div>
             <div class="col-span-2"><Button label="Generera schema" size="small" class="mt-4 float-right" @click="generateSchedule()"/></div>
         </div>
