@@ -9,7 +9,7 @@
             <div v-for="n in week">
                 <div class="week grid grid-cols-7">
                     <div :class="'day day-' + i" v-for="i in 7">
-                        <ScheduleDay @ResourceRequest="handleResourceRequest" :shifts="shifts" :dayIndex="getDayIndex(n,i)" :scheduledShift="getScheduledShift(n,i, scheduledShifts)" :dayOfWeek="i"/>
+                        <ScheduleDay @showContextMenu="handleRightClick" :shifts="localShifts" :dayIndex="getDayIndex(n,i)" :scheduledShift="getScheduledShift(n,i, scheduledShifts)" :requestedShift="requestedShifts[getDayIndex(n,i)]" :dayOfWeek="i" />
                     </div>
                 </div>
             </div>
@@ -18,21 +18,25 @@
 </template>
 <script setup>
 import ScheduleDay from './ScheduleDay.vue'
-import {ref} from 'vue'
-const emit = defineEmits(['updatedRequest'])
+import {ref, computed} from 'vue'
+const emit = defineEmits(['requestMenu'])
     const props = defineProps({
         resource:Object,
         week: Number,
         shifts:Array,
-        scheduledShifts:Object
+        scheduledShifts:Object,
+        requestedShifts:Array
     });
+
+    const localShifts = ref(props.shifts)
 
     const getShift = function(week, day){
         return 'A'
     }
 
-    const handleResourceRequest = function(event){
-        emit('updatedRequest', {request: event, resource: props.resource})
+    const handleRightClick = function(event, data){
+        data.resource = props.resource
+        emit('requestMenu', event, data)
     }
 
     const getDayIndex = function(week, day){

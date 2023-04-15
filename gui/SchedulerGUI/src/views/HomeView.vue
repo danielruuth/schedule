@@ -5,10 +5,11 @@ import ShiftSelector from '../components/ShiftSelector.vue';
 import Schedule from '../components/Schedule.vue';
 import RuleSelector from '../components/RuleSelector.vue';
 import moment from 'moment';
-import {ref, computed} from 'vue';
+import {ref, computed, watch} from 'vue';
 import axios from 'axios';
 import _ from 'lodash';
 import ViewMore from '../components/ViewMore.vue';
+import {useLocalStorage} from '../plugins/localStorage'
 
 
 /*
@@ -16,7 +17,7 @@ Lets load the basics right away
 */
 const loading = ref(false)
 
-const extendedShifts = ref([
+const extendedShifts = ref(useLocalStorage.get('shifts', [
     {
         name: 'A',
         demand: [3,3,3,3,3,2,2],
@@ -27,7 +28,7 @@ const extendedShifts = ref([
         name: 'C',
         demand: [3,3,3,3,2,2,2],
         start: "14:00",
-        end: "21:30"
+        end: "21:00"
     },
     {
         name: 'Verksamhetstid',
@@ -35,14 +36,18 @@ const extendedShifts = ref([
         start: "08:00",
         end: "16:30"
     }
-])
+]))
+
+watch(extendedShifts, async (newValue, oldValue) => {
+  console.log('Change happening to shifts')
+})
+
 
 const scheduledShifts = ref([])
 const schedulePenalties = ref([])
 const scheduleStatus = ref('UNPLANNED')
 const scheduleConflicts = ref([])
 const showResult = ref(false)
-const shiftNames = ref()
 
 const resources = ref([
     {name: 'Daniel'},
@@ -112,56 +117,60 @@ const checkForResourceOnDay = function(request, where){
 
 const getCurrentRequest = function(request){
     return checkForResourceOnDay(request, scheduleRequests.value)
-    /*let retval = false
-    scheduleRequests.value.forEach((item, index)=>{
-        //If same resource and same day
-        if( item[0] == request[0] && item[2] == request[2] ){
-            retval = { index: index }
-        }
-    })
-    return retval*/
 }
 
 const getCurrentFixed = function(request){
     return checkForResourceOnDay(request, scheduleFixedAss.value)
-    /*
-    let retval = false
-    scheduleFixedAss.value.forEach((item, index)=>{
-        //If same resource and same day
-        if( item[0] == request[0] && item[2] == request[2] ){
-            retval = { index: index }
-        }
-    })
-    return retval*/
 }
 
+const requestedAssignedByUser = computed(()=>{
+    let result = []
+
+    resources.value.forEach((user,index)=>{
+        result[index] = []
+        for(let r = 0; r < weeks.value * 7; r++){
+            result[index][r] = false
+        }
+    })
+    //[resourceIndex, shiftIndex, request.dayIndex]
+    scheduleFixedAss.value.forEach((item)=>{
+        result[item[0]][item[2]] = extendedShifts.value[item[1]-1].name //user.day = shift
+    })
+    scheduleRequests.value.forEach((item)=>{
+        result[item[0]][item[2]] = extendedShifts.value[item[1]-1].name //user.day = shift
+    })
+    return result
+})
+
 const handleRequestOrFixed = function(request){
-    console.log(request)
+    console.log('In handler', request)
     let resourceIndex = resources.value.findIndex((element)=>{
         return element.name == request.resource.name
     })
-    let shiftIndex = request.request.shiftIndex
+    let shiftIndex = request.shiftIndex
     let newRequest = []
     let currentIndex = false
-    if(request.request.type == 'FIXED'){
-        newRequest = [resourceIndex, shiftIndex, request.request.dayIndex]
+    if(request.type == 'FIXED'){
+        newRequest = [resourceIndex, shiftIndex, request.dayIndex]
         currentIndex = getCurrentFixed(newRequest);
         if( currentIndex !== false){
+            console.log('Fixed assignment updated')
             scheduleFixedAss.value[currentIndex.index] = newRequest
         }else{
+            console.log('Fixed assignment added')
             scheduleFixedAss.value.push(newRequest)
         }
-
     }else{
-        newRequest = [resourceIndex, shiftIndex, request.request.dayIndex, -4]
+        newRequest = [resourceIndex, shiftIndex, request.dayIndex, -4]
         if(shiftIndex == 0){ //day off
             newRequest[3] = -8 //Request day of overweight shift request
         }
         currentIndex = getCurrentRequest(newRequest)
         if( currentIndex !== false){
+            console.log('Resource request updated')
             scheduleRequests.value[currentIndex.index] = newRequest
         }else{
-            console.log('No request for resource on that day in request list')
+            console.log('Resource request added')
             scheduleRequests.value.push(newRequest)
         }
     }
@@ -184,9 +193,13 @@ const getTotalShifts = function(index){
 const weeklySumConstraints = computed(()=>{
     let result = []
     schedulePenalties.value.forEach((row)=>{
-        let parsed = parsePenaltyVar(row)
-        if (parsed.type == 'weekly_sum_constraint'){
-            result.push(parsed)
+        try{
+            let parsed = parsePenaltyVar(row)
+            if (parsed.type == 'weekly_sum_constraint'){
+                result.push(parsed)
+            }
+        }catch(error){
+            console.log(error)
         }
     })
     return result
@@ -246,6 +259,11 @@ const parsePenaltyVar = function(penalty){
             result.hint = hint;
 
             return result
+        }else{
+            return {
+                type: 'raw',
+                data: string
+            }
         }
         
     }catch(e){
@@ -425,9 +443,9 @@ const generateSchedule = function(){
         </div>
         <div class="grid">
             <div class="panel">
-                <ScrollPanel style="width: 100%;">
-                    <Schedule @updateRequests="handleRequestOrFixed" :startDate="startDate" :weeks="weeks" :resources="resources" :shifts="extendedShifts" :scheduledShifts="scheduledShifts"/>
-                </ScrollPanel>
+                
+                    <Schedule @ResourceRequest="handleRequestOrFixed" :startDate="startDate" :weeks="weeks" :resources="resources" :shifts="extendedShifts" :requestedShifts="requestedAssignedByUser" :scheduledShifts="scheduledShifts"/>
+               
             </div>
         </div>
         <div class="grid grid-cols-3 gap-2" v-if="showResult">

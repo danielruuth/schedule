@@ -1,5 +1,5 @@
 <template>
-    <ContextMenu ref="menu" :model="shiftsMenu" />
+    
     <div @mouseover="highlitePeerDays()" @contextmenu="onDayRightClick" class="day-info grid grid-cols-2 gap-1" :class="(scheduledShift != requestedShift && scheduledShift != '' && requestedShift != '') ? 'request-missmatch dayIndex-' + dayIndex : 'dayIndex-' + dayIndex ">
         <div class="text-lg font-bold text-center mt-1 mb-1" :class="(requestedShift=='') ? 'col-span-2' : ''"  v-if="scheduledShift != ''">
             {{ scheduledShift }}
@@ -10,19 +10,17 @@
     </div>
 </template>
 <script setup>
-import {ref} from 'vue'
+import {ref, watch} from 'vue'
 const props = defineProps({
     shifts: Array,
     dayOfWeek:Number,
     scheduledShift:String,
+    requestedShift:String|Boolean,
     dayIndex:Number
 })
-const menu = ref()
-const shiftIndex = ref(0)
-const label = ref('')
 
-const requestedShift = ref('')
-const emit = defineEmits(['ResourceRequest'])
+const emit = defineEmits(['showContextMenu']) //defineEmits(['ResourceRequest'])
+
 
 const highlitePeerDays = function(){
     //Remove prev. highlite
@@ -41,73 +39,10 @@ const highlitePeerDays = function(){
     }
 }
 
+const onDayRightClick = (event) => {
+    emit('showContextMenu', event, { dayIndex: props.dayIndex } )
+};
 
-    let contextMenuOptions = [{
-        label: 'Ledig (Veto)',
-        value: 'O',
-        icon: 'pi pi-ban',
-        command: (item) => setResourceRequest({item:{ label:'Ledig (Veto)', value:'O' }},0)
-    }]
-    let requests = []
-    props.shifts.forEach((item,index)=>{
-        let obj = {
-            label: item.name,
-            icon: '',
-            value: item.name,
-            command: (item) => setResourceRequest(item,index)
-        }
-        requests.push(obj)
-    })
-
-    
-    let assignments = []
-    props.shifts.forEach((item,index)=>{
-        let obj = {
-            label: item.name,
-            icon: '',
-            value: item.name,
-            command: (item) => setResourceRequest(item,index, true)
-        }
-        assignments.push(obj)
-    })
-    contextMenuOptions.push({
-        label: 'Önskemål',
-        items: requests
-    })
-    contextMenuOptions.push({
-        separator: true
-    })
-    contextMenuOptions.push({
-        label: 'Fast uppdrag',
-        items: assignments
-    })
-    
-
-    const setResourceRequest = function(event, index, fixed = false){
-        console.log('Setting resource request')
-        requestedShift.value = event.item.value
-        emit('ResourceRequest', { 
-            dayIndex: props.dayIndex,
-            shiftRequest: event.item.value,
-            shiftIndex: index+1,
-            type: fixed ? 'FIXED' : 'REQUEST'
-         })
-    }
-    
-    
-
-    const shiftsMenu = ref(contextMenuOptions);
-    
-    const onDayRightClick = (event, dayIndex) => {
-        menu.value.show(event);
-    };
-
-const getShiftsForDay = function(day){
-    const results = props.shifts.filter(obj => {
-        return obj.day == day;
-    });
-    return results
-}
 
 </script>
 <style>
