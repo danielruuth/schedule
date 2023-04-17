@@ -301,7 +301,7 @@ const generateSchedule = function(){
             <div class="panel">
                 <Schedule @ResourceRequest="handleRequestOrFixed" :startDate="ScheduleControll.get('startDate')" :weeks="ScheduleControll.get('weeks')" :resources="ScheduleControll.get('resources')" :shifts="ScheduleControll.get('shifts')" :requestedShifts="requestedAssignedByUser" :scheduledShifts="ScheduleControll.get('scheduledShifts')"/>
             </div>
-            <div class="version font-thin text-xs">v.1</div>
+            <div class="version font-thin text-xs">v.1.1</div>
         </div>
         <div class="grid grid-cols-3 gap-2" v-if="showResult">
             <div class="panel">
