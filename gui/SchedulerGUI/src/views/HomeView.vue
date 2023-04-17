@@ -9,6 +9,8 @@ import ViewMore from '../components/ViewMore.vue';
 import ScheduleHandler from '../plugins/scheduleHandler';
 import moment from 'moment';
 
+import CodeView from '../components/codeview.vue';
+
 /*
 Lets load the basics right away
 */
@@ -81,6 +83,7 @@ const getShiftCount = function(index, shift){
 
     }
 }
+
 
 const checkForResourceOnDay = function(request, where){
     let retval = false
@@ -264,6 +267,8 @@ const generateSchedule = function(){
 .zebra tr:nth-child(even) td{
     background-color: rgb(201, 201, 201, .4);
 }
+
+
 </style>
 
 <template>
@@ -389,10 +394,18 @@ const generateSchedule = function(){
                     </template>
                 </ViewMore>
             </div>
+            <div class="panel">
+                <span class="text-sm font-bold font-uppercase">API anrop:</span>
+                <ViewMore v-if="ScheduleControll.api_request != ''">
+                    <template #content>
+                        <CodeView :code="ScheduleControll.api_request"></CodeView>
+                    </template>
+                </ViewMore>
+            </div>
         </div>
         <div class="grid grid-cols-10 pb-8">
             <div class="col-span-8"></div>
-            <div class="col-span-2"><Button label="Generera schema" size="small" class="mt-4 float-right" @click="generateSchedule()"/></div>
+            <div class="col-span-2"><Button :loading="loading" label="Generera schema" size="small" class="mt-4 float-right" @click="generateSchedule()"/></div>
         </div>
     </div>
 </template>
