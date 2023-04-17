@@ -22,6 +22,7 @@ export default class ScheduleHandler {
         this.requests = ref([])
         this.assignments = ref([])
         this.__useLocalStorage = false
+        this.api_request = ref({})
     }
 
     set(key, value){
@@ -238,10 +239,13 @@ export default class ScheduleHandler {
                 'Content-Type': 'application/json',
             }
 
-            console.log(request)
+            this.api_request.value = request
             
-            //axios.post('/api/getschedule', request, headers)
-            axios.post('http://localhost:5000/api/getschedule', request, headers)
+            let apiURL = '/api/getschedule'
+            if(import.meta.env.DEV){
+                apiURL = 'http://localhost:5000/api/getschedule'
+            }
+            axios.post(apiURL, request, headers)
             .then((result)=>{
                     const data = result.data
 
