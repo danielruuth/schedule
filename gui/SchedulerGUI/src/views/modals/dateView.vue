@@ -1,5 +1,6 @@
 <script setup>
     import {ref, inject} from 'vue'
+    import moment from 'moment'
    
    const dialogRef = inject('dialogRef')
    const emit = defineEmits(['UpdatedDates'])
@@ -10,6 +11,7 @@
    const date = ref()
 
    const saveDateTime = function(){
+        console.log('StartDate', startDate)
         emit('UpdatedDates', {'startDate': startDate, 'weeks': weeks})
         dialogRef.value.close()
    }

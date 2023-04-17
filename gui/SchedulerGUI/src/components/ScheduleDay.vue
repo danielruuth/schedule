@@ -1,11 +1,12 @@
 <template>
     
-    <div @mouseover="highlitePeerDays()" @contextmenu="onDayRightClick" class="day-info grid grid-cols-2 gap-1" :class="(scheduledShift != requestedShift && scheduledShift != '' && requestedShift != '') ? 'request-missmatch dayIndex-' + dayIndex : 'dayIndex-' + dayIndex ">
+    <div @mouseover="highlitePeerDays()" @contextmenu="onDayRightClick" class="day-info grid grid-cols-2 gap-1" :class="(scheduledShift != requestedShift.shift && scheduledShift != '' && requestedShift != '') ? 'request-missmatch dayIndex-' + dayIndex : 'dayIndex-' + dayIndex ">
+        
         <div class="text-lg font-bold text-center mt-1 mb-1" :class="(requestedShift=='') ? 'col-span-2' : ''"  v-if="scheduledShift != ''">
             {{ scheduledShift }}
         </div>
-        <div class="text-lg font-bold text-center mt-1 mb-1" :class="(scheduledShift=='') ? 'col-span-2' : ''" v-if="requestedShift != ''">
-            {{ requestedShift }}
+        <div class="text-lg font-bold text-center mt-1 mb-1" :class="(scheduledShift=='') ? `col-span-2 scheduletype-${requestedShift.type}` : `scheduletype-${requestedShift.type}`" v-if="requestedShift != ''">
+            {{ requestedShift.shift }}
         </div>
     </div>
 </template>
@@ -62,6 +63,7 @@ const onDayRightClick = (event) => {
     }
     .day-info div:first-child{
         border-radius: 2px;
+        margin: 4px;
     }
 
     .request-missmatch{
@@ -80,6 +82,16 @@ const onDayRightClick = (event) => {
     100% {
         background-color: rgba(255,0,0,0)
     }
+    }
+
+    .scheduletype-assignment{
+        background-color: #FFD100;
+        color: #715D03;
+    }
+
+    .scheduletype-requested{
+        background-color: #FF6372;
+        color: #923840;
     }
 
 </style>

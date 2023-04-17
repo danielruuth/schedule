@@ -1,5 +1,6 @@
 <script setup>
     import {ref, inject} from 'vue'
+    import ViewMore from '../../components/ViewMore.vue';
     const dialogRef = inject('dialogRef')
     const emit = defineEmits(['UpdateRules'])
 
@@ -47,55 +48,59 @@
             <InputSwitch class="mt-4" v-model="weekendsConcat" @change="updateSettings($event)" disabled />
         </div>
         <div class="col-span-10">
-            <span class="font-bold text-sm">Avancerat</span>
+            <ViewMore :labels="['avancerat','dölj']" :hint="true" :hintHeight="50">
+                <template #content>
+                    <div class="col-span-10">
+                        <span class="font-bold text-sm">Avancerat</span>
+                    </div>
+                    <div class="col-span-5">
+                        <span class="font-bold text-xs">Typ</span>
+                        <select name="shift" v-model="adv_type" class="form-input rounded-md bg-gray-100 border-transparent w-full">
+                            <option value="weekly_sum_constraint">Begränsning veckototalsumma </option>
+                            <option value="shift_constraint">Begränsning per skift</option>
+                        </select>
+                    </div>
+                    <div class="col-span-5">
+                        <span class="font-bold text-xs">Förklaring {{ adv_type }}</span>
+                        <p v-for="paragraph in explain(adv_type)" class="text-xs font-thin mb-2" v-html="paragraph"></p>
+                    </div>
+                    <div class="col-span-4">
+                        <span class="font-bold text-xs">Skift</span>
+                        <select name="shift" v-model="adv_shift" class="form-input rounded-md bg-gray-100 border-transparent w-full">
+                                <option v-for="(shift,index) in availableShifts" :value="index">{{ shift.name }}</option>
+                        </select>
+                    </div>
+                    <div class="col-span-2">
+                        <span class="font-bold text-xs">Hårt min.</span>
+                        <input type="number" name="soft_min" v-model="adv_constraint[0]" class="form-input rounded-md bg-gray-100 border-transparent w-full"/>
+                    </div>
+                    <div class="col-span-2">
+                        <span class="font-bold text-xs">Mjukt min.</span>
+                        <input type="number" name="soft_min" v-model="adv_constraint[1]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
+                    </div>
+                    <div class="col-span-2">
+                        <span class="font-bold text-xs">Överträdelse min</span>
+                        <input type="number" name="soft_min" v-model="adv_constraint[2]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
+                    </div>
+                    <div class="col-span-4"></div>
+                    <div class="col-span-2">
+                        <span class="font-bold text-xs">Hårt max.</span>
+                        <input type="number" name="soft_min" v-model="adv_constraint[3]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
+                    </div>
+                    <div class="col-span-2">
+                        <span class="font-bold text-xs">Mjukt max.</span>
+                        <input type="number" name="soft_min" v-model="adv_constraint[4]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
+                    </div>
+                    <div class="col-span-2">
+                        <span class="font-bold text-xs">Överträdelse max</span>
+                        <input type="number" name="soft_min" v-model="adv_constraint[5]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
+                    </div>
+                    <div class="col-span-10">
+                        <span class="font-bold text-xs">&nbsp; </span>
+                        <Button label="Lägg till avancerad regel" class="w-full" />
+                    </div>
+                </template>
+            </ViewMore>
         </div>
-        <div class="col-span-5">
-            <span class="font-bold text-xs">Typ</span>
-            <select name="shift" v-model="adv_type" class="form-input rounded-md bg-gray-100 border-transparent w-full">
-                <option value="weekly_sum_constraint">Begränsning veckototalsumma </option>
-                <option value="shift_constraint">Begränsning per skift</option>
-            </select>
-        </div>
-        <div class="col-span-5">
-            <span class="font-bold text-xs">Förklaring {{ adv_type }}</span>
-            <p v-for="paragraph in explain(adv_type)" class="text-xs font-thin mb-2" v-html="paragraph"></p>
-        </div>
-        <div class="col-span-4">
-            <span class="font-bold text-xs">Skift</span>
-            <select name="shift" v-model="adv_shift" class="form-input rounded-md bg-gray-100 border-transparent w-full">
-                    <option v-for="(shift,index) in availableShifts" :value="index">{{ shift.name }}</option>
-            </select>
-        </div>
-        <div class="col-span-2">
-            <span class="font-bold text-xs">Hårt min.</span>
-            <input type="number" name="soft_min" v-model="adv_constraint[0]" class="form-input rounded-md bg-gray-100 border-transparent w-full"/>
-        </div>
-        <div class="col-span-2">
-            <span class="font-bold text-xs">Mjukt min.</span>
-            <input type="number" name="soft_min" v-model="adv_constraint[1]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
-        </div>
-        <div class="col-span-2">
-            <span class="font-bold text-xs">Överträdelse min</span>
-            <input type="number" name="soft_min" v-model="adv_constraint[2]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
-        </div>
-        <div class="col-span-4"></div>
-        <div class="col-span-2">
-            <span class="font-bold text-xs">Hårt max.</span>
-            <input type="number" name="soft_min" v-model="adv_constraint[3]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
-        </div>
-        <div class="col-span-2">
-            <span class="font-bold text-xs">Mjukt max.</span>
-            <input type="number" name="soft_min" v-model="adv_constraint[4]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
-        </div>
-        <div class="col-span-2">
-            <span class="font-bold text-xs">Överträdelse max</span>
-            <input type="number" name="soft_min" v-model="adv_constraint[5]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
-        </div>
-        <div class="col-span-10">
-            <span class="font-bold text-xs">&nbsp; </span>
-            <Button label="Lägg till avancerad regel" class="w-full" />
-        </div>
-
-        
     </div>
 </template>

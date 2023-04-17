@@ -6,11 +6,11 @@ const dialog = useDialog()
 
 const props = defineProps({
   shifts: Array,
-  extendedShifts: Array
+  shifts: Array
 })
 
 const internalShifts = ref(props.shifts)
-const internalExtendedShifts = ref(props.extendedShifts)
+const internalExtendedShifts = ref(props.shifts)
 
 const openModal = function(event, view){
     dialog.open(ShiftModal,{

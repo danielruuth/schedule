@@ -2,7 +2,7 @@
     import {ref, inject} from 'vue'
    
     const dialogRef = inject('dialogRef')
-    const emit = defineEmits(['onAddedResources'])
+    const emit = defineEmits(['AddedResources'])
 
     const resources = ref(dialogRef.value.data.resources)
     const resource_name = ref()
@@ -19,12 +19,16 @@
     const removeResource = function(index){
         console.log(index)
         resources.value.splice(index,1)
+
+
         emit('AddedResources', resources)
+
+        
     }
     const onCellEditComplete = function (event){
         if(event.newValue != event.value){
             console.log(event)
-            resources.value[event.index] = {name: event.newValue }
+            resources.value[event.index] = { name: event.newValue }
             emit('AddedResources', resources)
         }
     }

@@ -2,7 +2,7 @@
     import ScheduleHeader from './ScheduleHeader.vue';
     import ScheduleRow from './ScheduleRow.vue';
     import ScheduleFooter from './ScheduleFooter.vue';
-    import {ref} from 'vue'
+    import {ref, watch} from 'vue'
 
     const menu = ref();
     const emit = defineEmits(['ResourceRequest'])
@@ -38,7 +38,7 @@
                 label: item.name,
                 icon: '',
                 value: item.name,
-                command: (item) => setResourceRequest(item,index)
+                command: (item) => setResourceRequest(item,index+1)
             }
             requests.push(obj)
         })
@@ -48,17 +48,19 @@
                 label: item.name,
                 icon: '',
                 value: item.name,
-                command: (item) => setResourceRequest(item,index, true)
+                command: (item) => setResourceRequest(item, index+1, true)
             }
             assignments.push(obj)
         })
         contextMenuOptions.push({
             label: 'Önskemål',
-            items: requests
+            items: requests,
+            icon: 'pi pi-circle-fill'
         })
         contextMenuOptions.push({
             label: 'Fast uppdrag',
-            items: assignments
+            items: assignments,
+            icon: 'pi pi-circle-fill'
         })
         contextMenuOptions.push({
             separator: true
@@ -67,13 +69,13 @@
             label: 'Ledig (Veto)',
             value: 'O',
             icon: 'pi pi-ban',
-            command: (item) => setResourceRequest({item:{ label:'Ledig (Veto)', value:'O' }},0)
+            command: (item) => setResourceRequest({ item:{name:'Ledig (Veto)', value:'O'} },0)
         })
         contextMenuOptions.push({
             label: 'Rensa',
             value: '-1',
             icon: 'pi pi-trash',
-            command: (item) => setResourceRequest({item:{ label:'Rensa', value:'-1' }},0)
+            command: (item) => setResourceRequest({ item:{name:'Rensa', value:'DELETE'} },-1)
         })
 
         return contextMenuOptions
@@ -82,15 +84,15 @@
     const setResourceRequest = function(event, index, fixed = false){
         
         //This needs to be sent back to clicked day aswell
-        console.log(event)
+        console.log(event, index)
 
         emit('ResourceRequest', { 
             dayIndex: contextMenuData.value.dayIndex,
             shiftRequest: event.item.value,
-            shiftIndex: index+1,
+            shiftIndex: index,
             resource: contextMenuData.value.resource,
             type: fixed ? 'FIXED' : 'REQUEST'
-            })
+        })
     }
     const contextMenuData = ref()
     const handleRightClick = function(event, data){
@@ -103,7 +105,31 @@
     const shiftsMenu = ref( setupContextMenu(props.shifts) );
     const menuElement = ref(0)
 
+    watch(props.shifts, async (newValue, oldValue) => {
+        console.log('Shifts updated')
+        shiftsMenu.value = setupContextMenu(newValue)
+    })
+
 </script>
+<style>
+
+.p-contextmenu .p-menuitem:first-child > .p-menuitem-content .p-menuitem-link .p-menuitem-icon {
+    color: #FF6372;
+}
+.p-contextmenu .p-menuitem:nth-child(2) > .p-menuitem-content .p-menuitem-link .p-menuitem-icon {
+    color: #FFD100;
+}
+
+.scheduletype-assignment{
+        background-color: #FFD100;
+        color: #715D03;
+    }
+
+    .scheduletype-requested{
+        background-color: #FF6372;
+        color: #923840;
+    }
+</style>
 <template>
     <div @mouseleave="clearHighlite()">
         <ContextMenu ref="menuElement" :model="shiftsMenu" />

@@ -16,8 +16,8 @@
     </div>
 </template>
 <script setup>
-    import {ref} from 'vue'
-    import moment from 'moment'
+    import moment from 'moment/min/moment-with-locales'
+    moment.locale('sv')
 
     const props = defineProps({
         startDate: String,
@@ -44,9 +44,6 @@
 </script>
 
 <style scoped lang="scss">
-.week{
-    
-}
     .day{
         display: flex;
         align-items: center;

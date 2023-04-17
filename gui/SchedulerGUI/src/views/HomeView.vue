@@ -4,21 +4,22 @@ import ResourceSelector from '../components/ResourceSelector.vue';
 import ShiftSelector from '../components/ShiftSelector.vue';
 import Schedule from '../components/Schedule.vue';
 import RuleSelector from '../components/RuleSelector.vue';
-import moment from 'moment';
-import {ref, computed, watch} from 'vue';
-import axios from 'axios';
-import _ from 'lodash';
+import {ref, computed} from 'vue';
 import ViewMore from '../components/ViewMore.vue';
-import {useLocalStorage} from '../plugins/localStorage'
-
+import ScheduleHandler from '../plugins/scheduleHandler';
+import moment from 'moment';
 
 /*
 Lets load the basics right away
 */
 const loading = ref(false)
+const showResult = ref(false)
+const scheduleError = ref(false)
 
-const extendedShifts = ref(useLocalStorage.get('shifts', [
-    {
+
+const ScheduleControll = new ScheduleHandler();
+ScheduleControll.useLocalStorage()
+/*ScheduleControll.set('shifts', [{
         name: 'A',
         demand: [3,3,3,3,3,2,2],
         start: "06:45",
@@ -35,21 +36,9 @@ const extendedShifts = ref(useLocalStorage.get('shifts', [
         demand: [1,1,0,2,0,0,0],
         start: "08:00",
         end: "16:30"
-    }
-]))
+    }])
 
-watch(extendedShifts, async (newValue, oldValue) => {
-  console.log('Change happening to shifts')
-})
-
-
-const scheduledShifts = ref([])
-const schedulePenalties = ref([])
-const scheduleStatus = ref('UNPLANNED')
-const scheduleConflicts = ref([])
-const showResult = ref(false)
-
-const resources = ref([
+ScheduleControll.set('resources', [
     {name: 'Daniel'},
     {name: 'Natalie'},
     {name: 'Rikard'},
@@ -63,35 +52,24 @@ const resources = ref([
     {name: 'Erik'},
     {name: 'Bibbi'}
 ])
-const startDate = ref( moment().startOf('isoweek').format('YYYY-MM-DD'))
-const weeks = ref(4)
-const errorMessage = ref(false)
-
-const scheduleRules = ref({
-    min_weekends: false,
-    health: false
-})
-
-const scheduleRequests = ref([])
-const scheduleFixedAss = ref([])
-
-const updateShift = function(event){
-    console.log(event, 'shifts updated')
-}
+ScheduleControll.set('startDate', moment().startOf('isoweek').format('YYYY-MM-DD') )
+ScheduleControll.set('weeks', 4)*/
 
 function updatedDates(event) {
-    weeks.value = event.weeks.value;
-    startDate.value = event.startDate.value;
+    ScheduleControll.set('weeks', event.weeks.value);
+    ScheduleControll.set('startDate', moment(event.startDate.value).startOf('isoweek').format('YYYY-MM-DD'))
 }
 
 const updatedRules = function(event){
-    scheduleRules.value.health = event.health.value
-    scheduleRules.value.min_weekends = event.min_weekends.value
+    ScheduleControll.set('rules', { 
+        health: event.health.value,
+        min_weekends: event.min_weekends.value
+    })
 }
 
 const getShiftCount = function(index, shift){
     try{
-        let resourceShifts = scheduledShifts.value[index].shifts;
+        let resourceShifts = ScheduleControll.get('scheduledShifts')[index].shifts;
         let c = 0;
         resourceShifts.forEach((shiftType)=>{
             if(shiftType == shift){
@@ -116,49 +94,79 @@ const checkForResourceOnDay = function(request, where){
 }
 
 const getCurrentRequest = function(request){
-    return checkForResourceOnDay(request, scheduleRequests.value)
+    return checkForResourceOnDay(request, ScheduleControll.get('requests'))
 }
 
 const getCurrentFixed = function(request){
-    return checkForResourceOnDay(request, scheduleFixedAss.value)
+    return checkForResourceOnDay(request, ScheduleControll.get('assignments'))
+}
+
+const getCurrentByUserAtDay = function(request){
+    let requests = getCurrentRequest(request)
+    if( requests ){
+        return {type: 'REQUEST', data: requests}
+    }else{
+        let assignment = getCurrentFixed(request)
+        if(assignment){
+            return {type: 'ASSIGNMENT', data: assignment}
+        }else{
+            return false
+        }
+    }
+
 }
 
 const requestedAssignedByUser = computed(()=>{
     let result = []
-
-    resources.value.forEach((user,index)=>{
+    
+    ScheduleControll.get('resources').forEach((user,index)=>{
         result[index] = []
-        for(let r = 0; r < weeks.value * 7; r++){
+        for(let r = 0; r < ScheduleControll.get('weeks') * 7; r++){
             result[index][r] = false
         }
     })
-    //[resourceIndex, shiftIndex, request.dayIndex]
-    scheduleFixedAss.value.forEach((item)=>{
-        result[item[0]][item[2]] = extendedShifts.value[item[1]-1].name //user.day = shift
+    ScheduleControll.get('assignments').forEach((item)=>{
+        result[item[0]][item[2]] = {shift: ScheduleControll.get('shifts')[item[1]-1].name, type: 'assignment'} //user.day = shift
     })
-    scheduleRequests.value.forEach((item)=>{
-        result[item[0]][item[2]] = extendedShifts.value[item[1]-1].name //user.day = shift
+    ScheduleControll.get('requests').forEach((item)=>{
+        if(item[1] == 0){ //We request day off, this is quite an ugly fix I know
+            result[item[0]][item[2]] = {shift: 'O', type: 'requested'}
+        }else{
+            result[item[0]][item[2]] = {shift: ScheduleControll.get('shifts')[item[1]-1].name, type: 'requested'} //user.day = shift
+        }
     })
+    
     return result
 })
 
 const handleRequestOrFixed = function(request){
     console.log('In handler', request)
-    let resourceIndex = resources.value.findIndex((element)=>{
+    let resourceIndex = ScheduleControll.get('resources').findIndex((element)=>{
         return element.name == request.resource.name
     })
     let shiftIndex = request.shiftIndex
     let newRequest = []
     let currentIndex = false
-    if(request.type == 'FIXED'){
+    
+    if(request.shiftRequest == 'DELETE'){
+        console.log('DELETE THIS')
+        newRequest = [resourceIndex, shiftIndex, request.dayIndex,0]
+        let current = getCurrentByUserAtDay(newRequest)
+        if(current){
+            if(current.type == 'ASSIGNMENT'){
+                ScheduleControll.get('assignments').splice(current.data.index, 1);
+            }else if(current.type == 'REQUEST'){
+                ScheduleControll.get('requests').splice([current.data.index],1);
+            }
+        }
+
+    }else if(request.type == 'FIXED'){
         newRequest = [resourceIndex, shiftIndex, request.dayIndex]
         currentIndex = getCurrentFixed(newRequest);
         if( currentIndex !== false){
-            console.log('Fixed assignment updated')
-            scheduleFixedAss.value[currentIndex.index] = newRequest
+            ScheduleControll.get('assignments')[currentIndex.index] = newRequest
         }else{
-            console.log('Fixed assignment added')
-            scheduleFixedAss.value.push(newRequest)
+            ScheduleControll.get('assignments').push(newRequest)
         }
     }else{
         newRequest = [resourceIndex, shiftIndex, request.dayIndex, -4]
@@ -167,11 +175,11 @@ const handleRequestOrFixed = function(request){
         }
         currentIndex = getCurrentRequest(newRequest)
         if( currentIndex !== false){
-            console.log('Resource request updated')
-            scheduleRequests.value[currentIndex.index] = newRequest
+            console.log('Resource request updated', newRequest)
+            ScheduleControll.get('requests')[currentIndex.index] = newRequest
         }else{
-            console.log('Resource request added')
-            scheduleRequests.value.push(newRequest)
+            console.log('Resource request added', newRequest)
+            ScheduleControll.get('requests').push(newRequest)
         }
     }
 }
@@ -179,7 +187,7 @@ const handleRequestOrFixed = function(request){
 
 const getTotalShifts = function(index){
     try{
-        let resourceShifts = scheduledShifts.value[index].shifts;
+        let resourceShifts = ScheduleControll.get('scheduledShifts')[index].shifts;
         let c = 0;
         resourceShifts.forEach((shiftType)=>{
             c++
@@ -192,9 +200,9 @@ const getTotalShifts = function(index){
 
 const weeklySumConstraints = computed(()=>{
     let result = []
-    schedulePenalties.value.forEach((row)=>{
+    ScheduleControll.get('schedulePenalties').forEach((row)=>{
         try{
-            let parsed = parsePenaltyVar(row)
+            let parsed = ScheduleControll.parsePenaltyVar(row)
             if (parsed.type == 'weekly_sum_constraint'){
                 result.push(parsed)
             }
@@ -207,8 +215,8 @@ const weeklySumConstraints = computed(()=>{
 
 const excessDemands = computed(()=>{
     let result = []
-    schedulePenalties.value.forEach((row)=>{
-        let parsed = parsePenaltyVar(row)
+    ScheduleControll.get('schedulePenalties').forEach((row)=>{
+        let parsed = ScheduleControll.parsePenaltyVar(row)
         if (parsed.type == 'excess_demand'){
             result.push(parsed)
         }
@@ -218,8 +226,8 @@ const excessDemands = computed(()=>{
 
 const shiftConstraints = computed(()=>{
     let result = []
-    schedulePenalties.value.forEach((row)=>{
-        let parsed = parsePenaltyVar(row)
+    ScheduleControll.get('schedulePenalties').forEach((row)=>{
+        let parsed = ScheduleControll.parsePenaltyVar(row)
         if (parsed.type == 'shift_constraint'){
             result.push(parsed)
         }
@@ -227,173 +235,16 @@ const shiftConstraints = computed(()=>{
     return result
 })
 
-const parsePenaltyVar = function(penalty){
-    try{
-        let string = penalty.name
-        let regex = /^(\w+)\((\w+)=(\d+), (\w+)=(\d+), (\w+)=(\d+)\)/;
-        let regex2 = /^(\w+)\((\w+)=(\d+), (\w+)=(\d+)/;
-
-        
-
-        let matches1 = string.match(regex);
-        let matches2 = string.match(regex2)
-
-        let hint = string.split(':')[1]
-
-        
-        
-        if(matches1){
-            let result = {}
-            result.type = matches1[1]
-            result[matches1[2]] = matches1[3]
-            result[matches1[4]] = matches1[5]
-            result[matches1[6]] = matches1[7]
-            result.hint = hint
-
-            return result
-        }else if(matches2){
-            let result = {}
-            result.type = matches2[1]
-            result[matches2[2]] = matches2[3]
-            result[matches2[4]] = matches2[5]
-            result.hint = hint;
-
-            return result
-        }else{
-            return {
-                type: 'raw',
-                data: string
-            }
-        }
-        
-    }catch(e){
-        console.error('Fullfillment error=>', e)
-    }  
-}
-
-
-
-const hasEnoughRestTime = function (shiftA, shiftB, restTime = 11){
-  const restTimeInMilliseconds = restTime * 60 * 60 * 1000; // hours in milliseconds
-  const end1 = new Date(`1970-01-01T${shiftA.end}:00.000Z`);
-  const start2 = new Date(`1970-01-02T${shiftB.start}:00.000Z`);
-  const timeDifference = start2.getTime() - end1.getTime();
-  return timeDifference >= restTimeInMilliseconds;
-
-}
-
-const getPenalizedTransitions = function(shifts){
-    let penalized = []
-    shifts.forEach((shiftA, indexA)=>{
-        shifts.forEach((shiftB, indexB)=>{
-            if( !hasEnoughRestTime(shiftA, shiftB) ){
-                penalized.push(
-                    [indexA+1, indexB+1, 4] //+1 for the "O" off shift that will be unshifted to the array
-                )
-                console.log(`För lite vilotid mellan skift ${shiftA.name} och ${shiftB.name}`)
-            }
-        })
-    })
-    console.log('Penalized shifts', penalized)
-    return penalized;
-}
-
-const penalties = {
-    "weekly_sum_constraint":"För många pass/vecka",
-
-}
-
 const generateSchedule = function(){
-
     loading.value = true
-
-    showResult.value = false;
-    let desiredValue = (array,key) => {
-        let output = [];
-        for (let item of array) {
-            output.push(item[key]);
-        }
-        return output;
-    };
-
-   
-
-    let shiftsArray = ['O'] //Off shift
-    let cover_demands = [ //mon->sun
-        [],
-        [],
-        [],
-        [],
-        [],
-        [],
-        []
-    ]
-
-    extendedShifts.value.forEach((item, index)=>{
-        shiftsArray.push(item.name)
-        item.demand.forEach((cover, day)=>{
-            cover_demands[day][index] = cover
-        })
+    ScheduleControll.fetch()
+    .then(()=>{
+        loading.value = false
+        showResult.value = true
+    }).catch((error)=>{
+        loading.value = false
+        scheduleError.value = true
     })
-    let request = {
-        "resources": desiredValue(resources.value, 'name'),
-        "shifts": shiftsArray,
-        "weeks": weeks.value,
-        "fixed_assignments": scheduleFixedAss.value,
-        "requests": scheduleRequests.value, //Request: (employee, shift, day, weight)
-        "shift_constraints":  [ // (shift, hard_min, soft_min, min_penalty,soft_max, hard_max, max_penalty)
-            //One or two consecutive days of rest, this is a hard constraint.
-            [0, 1, 1, 0, 2, 2, 0]
-                
-        ],
-        "excess_cover_penalties":[2,2,10],
-        "weekly_sum_constraints":[
-            //shift, hard_min, soft_min, min_penalty, soft_max, hard_max, max_penalty
-            [0, 1, 2, 7, 2, 3, 4], //Ledig
-            [1, 1, 2, 7, 2, 3, 4], //A skift
-            [3, 0, 1, 1, 2, 2, 0], //VT skift
-            [2, 0, 1, 3, 4, 4, 0] // C skift
-        ],
-        "penalized_transitions": [],
-        "cover_demands": cover_demands,
-        "result_limit": 10
-        }
-
-        if(scheduleRules.value.health == true){
-            request['penalized_transitions'] = getPenalizedTransitions(extendedShifts.value)
-        }
-
-        const headers = {
-        'Content-Type': 'application/json',
-    }
-
-    console.log(request)
-    
-    //axios.post('/api/getschedule', request, headers)
-    axios.post('http://localhost:5000/api/getschedule', request, headers)
-    .then((result)=>{
-            const data = result.data
-
-            if(data.status == 'NOT FEASABLE'){
-                errorMessage.value = true;
-            }else{
-            
-                //Update the data
-                scheduledShifts.value = data.result.shifts
-                schedulePenalties.value = data.result.penalties
-                scheduleConflicts.value = data.conflicts
-                scheduleStatus.value = data.status
-
-                showResult.value = true
-            }
-            loading.value = false
-
-    })
-    .catch((error)=>{
-        console.log(error)
-    })
-
-    console.log(request)
 }
 
 </script>
@@ -421,7 +272,7 @@ const generateSchedule = function(){
             <ProgressSpinner style="width: 50px; height: 50px" strokeWidth="8" fill="var(--surface-ground)"
         animationDuration=".5s" aria-label="Laddar" />
     </div>
-        <Dialog v-model:visible="errorMessage" modal header="Hoppsan" :style="{ width: '50vw' }">
+        <Dialog v-model:visible="scheduleError" modal header="Hoppsan" :style="{ width: '50vw' }">
             <p class="font-thin text-md">
                Inga lösningar hittades med dessa inställningar.<br />
                <span class="font-bold">Tips:</span> Prova att lägga till resurser eller ta bort hälsoschema.
@@ -429,24 +280,23 @@ const generateSchedule = function(){
         </Dialog>
         <div class="grid grid-cols-4 gap-1">
             <div class="panel">
-                <DateSelector :startDate="startDate" :weeks="weeks" @UpdatedDates="updatedDates"/>
+                <DateSelector :startDate="ScheduleControll.get('startDate')" :weeks="ScheduleControll.get('weeks')" @UpdatedDates="updatedDates"/>
             </div>
             <div class="panel">
-                <ResourceSelector :resources="resources"/>
+                <ResourceSelector :resources="ScheduleControll.get('resources')"/>
             </div>
             <div class="panel">
-                <ShiftSelector :extendedShifts="extendedShifts" @AddedShift="updateShift"/>
+                <ShiftSelector :shifts="ScheduleControll.get('shifts')" />
             </div>
             <div class="panel">
-                <RuleSelector :rules="scheduleRules" :shifts="extendedShifts" @UpdateRules="updatedRules" />
+                <RuleSelector :rules="ScheduleControll.get('rules')" :shifts="ScheduleControll.get('shifts')" @UpdateRules="updatedRules" />
             </div>
         </div>
         <div class="grid">
             <div class="panel">
-                
-                    <Schedule @ResourceRequest="handleRequestOrFixed" :startDate="startDate" :weeks="weeks" :resources="resources" :shifts="extendedShifts" :requestedShifts="requestedAssignedByUser" :scheduledShifts="scheduledShifts"/>
-               
+                <Schedule @ResourceRequest="handleRequestOrFixed" :startDate="ScheduleControll.get('startDate')" :weeks="ScheduleControll.get('weeks')" :resources="ScheduleControll.get('resources')" :shifts="ScheduleControll.get('shifts')" :requestedShifts="requestedAssignedByUser" :scheduledShifts="ScheduleControll.get('scheduledShifts')"/>
             </div>
+            <div class="version font-thin text-xs">v.1</div>
         </div>
         <div class="grid grid-cols-3 gap-2" v-if="showResult">
             <div class="panel">
@@ -455,22 +305,22 @@ const generateSchedule = function(){
                     <thead>
                         <tr>
                             <th class="text-xs font-bold text-left">Resurs</th>
-                            <th v-for="shift in extendedShifts" class="text-xs font-bold text-left">{{ shift.name }}</th>
+                            <th v-for="shift in ScheduleControll.get('shifts')" class="text-xs font-bold text-left">{{ shift.name }}</th>
                             <th class="text-xs font-bold text-left">Totalt</th>
                         </tr>
                     </thead>
                     <tbody>
-                        <tr v-for="(resource,index) in resources">
+                        <tr v-for="(resource,index) in ScheduleControll.get('resources')">
                             <td class="text-xs font-bold">{{ resource.name }}</td>
-                            <td v-for="shift in extendedShifts" class="text-xs font-light">{{ getShiftCount(index, shift.name) }}</td>
+                            <td v-for="shift in ScheduleControll.get('shifts')" class="text-xs font-light">{{ getShiftCount(index, shift.name) }}</td>
                             <td class="text-xs font-light"> {{ getTotalShifts(index) }} </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
             <div class="panel">
-                <span class="text-sm font-bold font-uppercase">Överträdelser:</span> <span class="text-sm font-light font-uppercase">{{ schedulePenalties.length }}</span>
-                <div v-if="schedulePenalties.length == 0">
+                <span class="text-sm font-bold font-uppercase">Överträdelser:</span> <span class="text-sm font-light font-uppercase">{{ ScheduleControll.get('schedulePenalties').length }}</span>
+                <div v-if="ScheduleControll.get('schedulePenalties').length == 0">
                     Inga överträdelser!
                 </div>
                 <ViewMore v-else>
@@ -490,8 +340,8 @@ const generateSchedule = function(){
                             <tbody>
                                 <tr v-for="penalty in weeklySumConstraints">
                                     <td class="text-xs font-thin">{{ penalty.hint }}</td>
-                                    <td class="text-xs font-thin">{{ resources[penalty.employee].name }}</td>
-                                    <td class="text-xs font-thin">{{ extendedShifts[penalty.shift-1].name }}</td>
+                                    <td class="text-xs font-thin">{{ ScheduleControll.get('resources')[penalty.employee].name }}</td>
+                                    <td class="text-xs font-thin">{{ ScheduleControll.get('shifts')[penalty.shift-1].name }}</td>
                                     <td class="text-xs font-thin">{{ penalty.week }}</td>
                                 </tr>
                             </tbody>
@@ -504,6 +354,7 @@ const generateSchedule = function(){
                                 <tr>
                                     <th class="text-xs font-bold text-left">Överträdelse</th>
                                     <th class="text-xs font-bold text-left">Skift</th>
+                                    <th class="text-xs font-bold text-left">Dag</th>
                                     <th class="text-xs font-bold text-left">Vecka</th>
                                     
                                 </tr>
@@ -511,7 +362,8 @@ const generateSchedule = function(){
                             <tbody>
                                 <tr v-for="penalty in excessDemands">
                                     <td class="text-xs font-thin">{{ penalty.type }}</td>
-                                    <td class="text-xs font-thin">{{ extendedShifts[penalty.shift-1].name }}</td>
+                                    <td class="text-xs font-thin">{{ ScheduleControll.get('shifts')[penalty.shift-1].name }}</td>
+                                    <td class="text-xs font-thin">{{ penalty.day }}</td>
                                     <td class="text-xs font-thin">{{ penalty.week }}</td>
                                 </tr>
                             </tbody>

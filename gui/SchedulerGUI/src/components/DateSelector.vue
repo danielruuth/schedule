@@ -1,9 +1,8 @@
 <script setup>
 import { useDialog } from 'primevue/usedialog';
 import DateModal from '../views/modals/dateView.vue'
-import moment from 'moment'
-import 'moment/locale/sv'
-import {ref, inject, computed} from 'vue'
+import moment from 'moment/min/moment-with-locales'
+import {ref, computed} from 'vue'
 
 moment.locale('sv')
 
@@ -36,8 +35,9 @@ const openModal = function(event, view){
         },
         emits: {
             onUpdatedDates: (e) => {
-                internalStartDate.value = e.startDate.value
+                internalStartDate.value = moment(e.startDate.value).startOf('isoweek').format('YYYY-MM-DD')
                 internalWeeks.value = e.weeks.value
+                console.log(internalStartDate, 'internalstartdate')
                 emit('UpdatedDates', e) //Bubble it
             }
         }
