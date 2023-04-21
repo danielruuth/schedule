@@ -60,6 +60,7 @@ export default class ScheduleHandler {
                     2,
                     2
                 ],
+                "excess_penalty":[2,2,2,2,2,4,4],
                 "start": "06:45",
                 "end": "16:15"
             },
@@ -74,6 +75,7 @@ export default class ScheduleHandler {
                     2,
                     2
                 ],
+                "excess_penalty":[4,4,4,4,4,8,8],
                 "start": "14:00",
                 "end": "21:00"
             },
@@ -89,9 +91,21 @@ export default class ScheduleHandler {
                     0,
                     0,
                     0
-                ]
+                ],
+                "excess_penalty":[2,2,2,2,2,8,8],
             }
         ])
+
+        //
+        let temp = []
+        this.shifts.value.forEach((shift,index)=>{
+            if(!shift.excess_penalty){
+                shift['excess_penalty'] = [2,2,2,2,2,4,4]
+            }
+            temp.push(shift)
+        })
+        this.set('shifts', temp)
+
         this.resources.value = useLocalStorage.get('resources', [
             {
                 "name": "SSK 1"
@@ -156,30 +170,143 @@ export default class ScheduleHandler {
 
     hasEnoughRestTime(shiftA, shiftB, restTime = 11){
         const restTimeInMilliseconds = restTime * 60 * 60 * 1000; // hours in milliseconds
-        const end1 = new Date(`1970-01-01T${shiftA.end}:00.000Z`);
+        const start1 = new Date(`1970-01-01T${shiftA.start}:00.000Z`)
+        let end1 = new Date(`1970-01-01T${shiftA.end}:00.000Z`);
+
+        if(start1.getTime() > end1.getTime()){
+            //This means we actually cross midnight, not that we end before we start
+            //and we need to fix this ugly style
+            end1 = new Date(`1970-01-02T${shiftA.end}:00.000Z`);
+        }
+
         const start2 = new Date(`1970-01-02T${shiftB.start}:00.000Z`);
         const timeDifference = start2.getTime() - end1.getTime();
         return timeDifference >= restTimeInMilliseconds;
-      
     }
       
     getPenalizedTransitions(shifts){
-          let penalized = []
-          shifts.forEach((shiftA, indexA)=>{
-              shifts.forEach((shiftB, indexB)=>{
-                  if( !this.hasEnoughRestTime(shiftA, shiftB) ){
-                      penalized.push(
-                          [indexA+1, indexB+1, 4] //+1 for the "O" off shift that will be unshifted to the array
-                      )
-                  }
-              })
-          })
-          return penalized;
+        let penalized = []
+        if(this.get('rules').health == true){
+            shifts.forEach((shiftA, indexA)=>{
+                shifts.forEach((shiftB, indexB)=>{
+                    if( !this.hasEnoughRestTime(shiftA, shiftB) ){
+                        penalized.push(
+                            [indexA+1, indexB+1, 4] //+1 for the "O" off shift that will be unshifted to the array
+                        )
+                    }
+                })
+            })
+        }else{
+            //Dont go from night to day
+            shifts.forEach((shiftA, indexA)=>{
+                shifts.forEach((shiftB, indexB)=>{
+                    if( !this.hasEnoughRestTime(shiftA, shiftB, 8) ){
+                        penalized.push(
+                            [indexA+1, indexB+1, 4] //+1 for the "O" off shift that will be unshifted to the array
+                        )
+                    }
+                })
+            })
+        }
+
+
+        return penalized;
     }
+
+    getExcessCoverPenalties(shifts){
+        let res = []
+        let shiftLateStart = new Date('1970-01-01T12:00:00.000Z').getTime();
+        shifts.forEach((item)=>{
+            //Penalize late shifts harder than early shifts
+            let shiftStart = new Date(`1970-01-01T${item.start}:00.000Z`).getTime()
+            if( shiftStart > shiftLateStart ){
+                res.push(4)
+            }else{
+                res.push(2)
+            }
+        })
+        return res;
+        
+    }
+
+    generateSumConstraint(index, shift){
+        /*
+        # (shift, hard_min, soft_min, min_penalty, soft_max, hard_max, max_penalty)
+        # (3, 0, 1, 3, 4, 4, 0),
+        */
+        let shiftLateStart = new Date('1970-01-01T12:00:00.000Z').getTime() //We decide that shifts that start after noon is a late shift
+        let shiftStart = new Date(`1970-01-01T${shift.start}:00.000Z`).getTime()
+        
+        let min = {
+            hard: 1,
+            soft: 2,
+            penalty: 2
+        }
+        
+        let max = {
+            hard: 5,
+            soft: 4,
+            penalty: 3
+        }
+
+        if( shiftStart > shiftLateStart ){
+            min.hard = 0
+            min.soft = 1
+            min.penalty = 2
+
+            max.hard = 2
+            max.soft = 1
+            max.penalty = 8
+
+            return [
+                index,
+                min.hard,
+                min.soft,
+                min.penalty,
+                max.soft,
+                max.hard,
+                max.penalty
+            ]
+        }else{
+            return false
+        }
+
+
+        
+    }
+
+    getWeeklySumConstraints(shifts){
+        let res = []
+        res.push([0, 2, 2, 0, 2, 2, 0]) //Ledig
+        
+        shifts.forEach((item, index)=>{
+            let constraint = this.generateSumConstraint(index+1, item)
+            if(constraint){ res.push(constraint) }
+        })
+        return res;
+    }
+
+    getCoverDemands(shifts){
+        let cover_demands = [ //mon->sun
+            [],
+            [],
+            [],
+            [],
+            [],
+            [],
+            []
+        ]
+        shifts.forEach((item, index)=>{
+            item.demand.forEach((cover, day)=>{
+                cover_demands[day][index] = cover
+            })
+        })
+        return cover_demands
+    }
+
 
     fetch(){
         return new Promise((resolve, reject)=>{
-
             let desiredValue = (array,key) => {
                 let output = [];
                 for (let item of array) {
@@ -187,59 +314,39 @@ export default class ScheduleHandler {
                 }
                 return output;
             };
+            
             let shiftsArray = ['O'] //Off shift
-            let cover_demands = [ //mon->sun
-                [],
-                [],
-                [],
-                [],
-                [],
-                [],
-                []
-            ]
-
             this.get('shifts').forEach((item, index)=>{
                 shiftsArray.push(item.name)
-                item.demand.forEach((cover, day)=>{
-                    cover_demands[day][index] = cover
-                })
             })
+            
             let request = {
                 "resources": desiredValue(this.get('resources'), 'name'),
                 "shifts": shiftsArray,
                 "weeks": this.get('weeks'),
                 "fixed_assignments": this.get('assignments'),
-                "requests": this.get('requests'), //Request: (employee, shift, day, weight)
+                "requests": this.get('requests'),
                 "shift_constraints":  [ // (shift, hard_min, soft_min, min_penalty,soft_max, hard_max, max_penalty)
                     //One or two consecutive days of rest, this is a hard constraint.
                     [0, 1, 1, 0, 2, 2, 0]
                         
                 ],
-                "excess_cover_penalties":[2,2,10],
-                "weekly_sum_constraints":[
-                    //shift, hard_min, soft_min, min_penalty, soft_max, hard_max, max_penalty
-                    //TODO: These needs to be generated
-                    [0, 1, 2, 7, 2, 3, 4], //Ledig
-                    [1,2,2,0,4,5,0],
-                    [2,2,2,0,3,4,0]
-                    /*[1, 1, 2, 7, 2, 3, 4], //A skift
-                    [3, 0, 1, 1, 2, 2, 0], //VT skift
-                    [2, 0, 1, 3, 4, 4, 0] // C skift*/
-                ],
-                "penalized_transitions": [],
-                "cover_demands": cover_demands,
+                "excess_cover_penalties": this.getExcessCoverPenalties(this.get('shifts')),
+                "weekly_sum_constraints":this.getWeeklySumConstraints(this.get('shifts')),
+                "penalized_transitions": this.getPenalizedTransitions(this.get('shifts')),
+                "cover_demands": this.getCoverDemands(this.get('shifts')),
                 "result_limit": 10
-                }
-
-                if(this.get('rules').health == true){
-                    request['penalized_transitions'] = this.getPenalizedTransitions(this.get('shifts'))
-                }
-
-                const headers = {
-                'Content-Type': 'application/json',
             }
 
+            console.log(request)
+            
+            const headers = {
+                'Content-Type': 'application/json',
+            }
+            
+
             this.api_request.value = request
+
             
             let apiURL = '/api/getschedule'
             if(import.meta.env.DEV){

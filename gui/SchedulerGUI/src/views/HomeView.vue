@@ -280,7 +280,6 @@ const generateSchedule = function(){
         <Dialog v-model:visible="scheduleError" modal header="Hoppsan" :style="{ width: '50vw' }">
             <p class="font-thin text-md">
                Inga lösningar hittades med dessa inställningar.<br />
-               <span class="font-bold">Tips:</span> Prova att lägga till resurser eller ta bort hälsoschema.
             </p>
         </Dialog>
         <div class="grid grid-cols-4 gap-1">
