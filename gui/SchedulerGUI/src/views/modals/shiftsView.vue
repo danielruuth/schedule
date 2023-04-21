@@ -30,7 +30,7 @@
     
 
     const addShift = function(){
-        shiftNames.value.push({name: shift.value.name, start: shift.value.start, end: shift.value.end, demand: [0,0,0,0,0,0,0]})
+        shiftNames.value.push({name: shift.value.name, start: shift.value.start, end: shift.value.end, demand: [0,0,0,0,0,0,0], excess_penalty: [2,2,2,2,2,4,4]})
     }
 
     const number_shifts = computed(()=>{
@@ -75,8 +75,9 @@
                 <span class="text-sm font-bold uppercase">{{ weekdays[n-1] }}</span>
                 <div :class="'mt-2 grid gap-2 grid-cols-' + number_shifts">
                     <div v-for="i in number_shifts" class="col-span-1">
-                        <span class="text-xs font-bold uppercase">{{ shiftNames[i-1].name }}</span>
+                        <span class="text-xs font-bold uppercase">{{ shiftNames[i-1].name }}</span><br />
                         <input type="number" v-model="shiftNames[i-1].demand[n-1]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
+                        
                     </div>
                 </div>
             </div>
