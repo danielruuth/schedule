@@ -17,6 +17,9 @@ import ContextMenu from 'primevue/contextmenu';
 import Chip from 'primevue/chip';
 import ProgressSpinner from 'primevue/progressspinner';
 import ScrollPanel from 'primevue/scrollpanel';
+import ColorPicker from 'primevue/colorpicker';
+import Badge from 'primevue/badge';
+import BadgeDirective from 'primevue/badgedirective';
 
 //theme
 import './assets/base.scss'
@@ -47,5 +50,8 @@ app.component('ContextMenu', ContextMenu)
 app.component('Chip', Chip)
 app.component('ProgressSpinner', ProgressSpinner)
 app.component('ScrollPanel', ScrollPanel)
+app.component('ColorPicker', ColorPicker)
+app.component('Badge', Badge)
+app.directive('Badge', BadgeDirective);
 
 app.mount('#app')

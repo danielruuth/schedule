@@ -17,7 +17,8 @@ export default class ScheduleHandler {
         this.errorMessage = ref(false)
         this.rules = ref({
             min_weekends: false,
-            health: false
+            health: false,
+            group_offshift: false
         })
         this.requests = ref([])
         this.assignments = ref([])
@@ -60,9 +61,15 @@ export default class ScheduleHandler {
                     2,
                     2
                 ],
-                "excess_penalty":[2,2,2,2,2,4,4],
+                "excess_penalty":2,
+                "max_shifts":2,
+                "max_shifts_penalty":2,
+                "min_shifts":2,
+                "min_shifts_penalty":2,
                 "start": "06:45",
-                "end": "16:15"
+                "end": "16:15",
+                "break":"00:45",
+
             },
             {
                 "name": "C",
@@ -75,14 +82,20 @@ export default class ScheduleHandler {
                     2,
                     2
                 ],
-                "excess_penalty":[4,4,4,4,4,8,8],
+                "excess_penalty":2,
+                "max_shifts":2,
+                "max_shifts_penalty":2,
+                "min_shifts":2,
+                "min_shifts_penalty":2,
                 "start": "14:00",
-                "end": "21:00"
+                "end": "21:00",
+                "break":"00:30"
             },
             {
                 "name": "Verksamhetstid",
                 "start": "06:45",
                 "end": "16:15",
+                "break":"00:45",
                 "demand": [
                     1,
                     2,
@@ -92,16 +105,31 @@ export default class ScheduleHandler {
                     0,
                     0
                 ],
-                "excess_penalty":[2,2,2,2,2,8,8],
+                "excess_penalty":2,
+                "max_shifts":2,
+                "max_shifts_penalty":2,
+                "min_shifts":2,
+                "min_shifts_penalty":2,
             }
         ])
 
         //
         let temp = []
         this.shifts.value.forEach((shift,index)=>{
-            if(!shift.excess_penalty){
-                shift['excess_penalty'] = [2,2,2,2,2,4,4]
+            if(!shift.excess_penalty || typeof shift.excess_penalty != 'Number'){
+                shift['excess_penalty'] = 2
             }
+            if(!shift.max_shifts){
+                shift['max_shifts'] = 2
+                shift['max_shifts_penalty'] = 1
+                shift['min_shifts'] = 2
+                shift['min_shifts_penalty'] = 2
+            }
+
+            if(!shift.break){
+                shift['break'] = "00:45"
+            }
+
             temp.push(shift)
         })
         this.set('shifts', temp)
@@ -217,73 +245,52 @@ export default class ScheduleHandler {
         let res = []
         let shiftLateStart = new Date('1970-01-01T12:00:00.000Z').getTime();
         shifts.forEach((item)=>{
-            //Penalize late shifts harder than early shifts
-            let shiftStart = new Date(`1970-01-01T${item.start}:00.000Z`).getTime()
-            if( shiftStart > shiftLateStart ){
-                res.push(4)
-            }else{
-                res.push(2)
-            }
+            res.push(item.excess_penalty)
         })
         return res;
         
     }
 
     generateSumConstraint(index, shift){
-        /*
-        # (shift, hard_min, soft_min, min_penalty, soft_max, hard_max, max_penalty)
+        /*# (shift, hard_min, soft_min, min_penalty, soft_max, hard_max, max_penalty)
         # (3, 0, 1, 3, 4, 4, 0),
         */
-        let shiftLateStart = new Date('1970-01-01T12:00:00.000Z').getTime() //We decide that shifts that start after noon is a late shift
-        let shiftStart = new Date(`1970-01-01T${shift.start}:00.000Z`).getTime()
-        
-        let min = {
-            hard: 1,
-            soft: 2,
-            penalty: 2
-        }
-        
-        let max = {
-            hard: 5,
-            soft: 4,
-            penalty: 3
-        }
-
-        if( shiftStart > shiftLateStart ){
-            min.hard = 0
-            min.soft = 1
-            min.penalty = 2
-
-            max.hard = 2
-            max.soft = 1
-            max.penalty = 8
-
-            return [
-                index,
-                min.hard,
-                min.soft,
-                min.penalty,
-                max.soft,
-                max.hard,
-                max.penalty
-            ]
-        }else{
-            return false
-        }
-
-
+        return [
+            index,
+            shift.min_shifts,
+            Math.max(shift.min_shifts-1,0),
+            shift.min_shifts_penalty,
+            Math.max(shift.max_shifts-1,0),
+            shift.max_shifts,
+            shift.max_shifts_penalty
+        ]
         
     }
 
     getWeeklySumConstraints(shifts){
         let res = []
-        res.push([0, 2, 2, 0, 2, 2, 0]) //Ledig
+
+        res.push([0, 1, 2, 8, 2, 4, 4]) //Ledig
         
         shifts.forEach((item, index)=>{
             let constraint = this.generateSumConstraint(index+1, item)
             if(constraint){ res.push(constraint) }
         })
         return res;
+    }
+
+    getShiftConstraints(){
+        let res = []
+        if(!this.get('rules').group_offshift){
+            res.push(
+                [0, 1, 1, 0, 2, 2, 0]
+            )
+        }else{
+            res.push(
+                [0, 2, 2, 0, 2, 2, 0]
+            )
+        }
+        return res
     }
 
     getCoverDemands(shifts){
@@ -326,11 +333,7 @@ export default class ScheduleHandler {
                 "weeks": this.get('weeks'),
                 "fixed_assignments": this.get('assignments'),
                 "requests": this.get('requests'),
-                "shift_constraints":  [ // (shift, hard_min, soft_min, min_penalty,soft_max, hard_max, max_penalty)
-                    //One or two consecutive days of rest, this is a hard constraint.
-                    [0, 1, 1, 0, 2, 2, 0]
-                        
-                ],
+                "shift_constraints":  this.getShiftConstraints(),
                 "excess_cover_penalties": this.getExcessCoverPenalties(this.get('shifts')),
                 "weekly_sum_constraints":this.getWeeklySumConstraints(this.get('shifts')),
                 "penalized_transitions": this.getPenalizedTransitions(this.get('shifts')),

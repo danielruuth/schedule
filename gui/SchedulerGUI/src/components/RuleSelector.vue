@@ -30,20 +30,21 @@ const openModal = function(event, view){
                 console.log('Emitting', e)
                 internalRules.value = e
                 //LEts bubble it
-                emit('UpdateRules', {'health': e.health, 'min_weekends': e.min_weekends})
+                emit('UpdateRules', {'health': e.health, 'min_weekends': e.min_weekends, 'group_offshift': e.group_offshift})
             }
         }
     })
 }
 </script>
 <template>
-    <div class="grid grid-cols-12">
+    <div class="grid grid-cols-12 item-start">
         <div class="col-span-11">
-            <span class="text-xs font-bold uppercase">Regler: </span>
-            <span class="text-xs font-thin" v-if="internalRules.health">Hälsoschema</span> 
-            <span class="text-xs font-thin" v-if="internalRules.min_weekends">Gruppera helgpass</span> 
+            <span class="text-xs font-bold uppercase">Regler: </span><br />
+            <div class="text-xs font-thin" v-if="internalRules.health">Hälsoschema</div> 
+            <div class="text-xs font-thin" v-if="internalRules.min_weekends">Gruppera helgpass</div> 
+            <div class="text-xs font-thin" v-if="internalRules.group_offshift">Sammanhållen ledighet</div> 
         </div>
-        <div class="col-span-1 self-end">
+        <div class="col-span-1 justify-self-end">
             <span class="pi pi-ellipsis-h right-0 cursor-pointer" @click="openModal($event)"></span>
         </div>
     </div>

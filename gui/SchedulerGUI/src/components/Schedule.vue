@@ -135,6 +135,6 @@
         <ContextMenu ref="menuElement" :model="shiftsMenu" />
         <ScheduleHeader :startDate="startDate" :weeks="weeks"/>
         <ScheduleRow @requestMenu="handleRightClick" :week="weeks" :requestedShifts="requestedShifts[index]" v-for="(resource,index) in resources" :resource="resource" :shifts="localShifts" :scheduledShifts="scheduledShifts[index] || []" />
-        <ScheduleFooter :weeks="weeks" :shifts="shifts" :scheduledShifts="scheduledShifts" />
+        <ScheduleFooter :weeks="weeks" :shifts="shifts" :scheduledShifts="scheduledShifts" :requestedShifts="requestedShifts" />
     </div>
 </template>

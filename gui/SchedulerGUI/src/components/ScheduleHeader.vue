@@ -4,11 +4,12 @@
             
         </div>
         <div :class="'col-span-11 grid gap-2 grid-row-1 grid-cols-' + weeks">
-            <div v-for="n in weeks">
+            <div v-for="n in weeks" style="grid-row: 1;">
                 <div class="week grid grid-cols-7">
+                    <div class="col-span-7 text-xs font-bold mb-2 indent-2"> v. {{ getDayFromOffset(n, i-1).format('w') }}</div>
                     <div :class="'day day-info dayIndex-'+ getDayIndex(n, i) +' day-' + i" v-for="i=0 in 7">
-                        <span class="text-xs font-light uppercase text-gray-500">{{ getDayFromOffset(n, i-1).format('ddd') }}</span>
-                        <span class="text-lg font-bold uppercase">{{ getDayFromOffset(n, i-1).format('DD') }}</span>
+                        <span class="text-xs font-light uppercase text-gray-500">{{ getDayFromOffset(n, i-1).format(getDisplayFormat()) }}</span>
+                        <span :class="`${getDateTextSize()} font-bold uppercase`">{{ getDayFromOffset(n, i-1).format('DD') }}</span>
                     </div>
                 </div>
             </div>
@@ -37,6 +38,26 @@
     const getDayFromOffset = function(week, day){
         let date = moment(props.startDate).clone().add(week-1, 'weeks').add(day, 'days')
         return date
+    }
+
+    const getDateTextSize = function(){
+        if(props.weeks < 4){
+            return 'text-lg';
+        }else if(props.weeks < 8 ){
+            return 'text-md'
+        }else if(props.weeks < 12){
+            return 'text-sm'
+        }else{
+            return 'text-xs'
+        }
+    }
+
+    const getDisplayFormat = function(){
+        if(props.weeks > 4){
+            return 'dd'
+        }else{
+            return 'ddd'
+        }
     }
 
     const startDate = moment(props.startDate)

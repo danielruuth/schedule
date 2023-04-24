@@ -37,10 +37,10 @@ const openModal = function(event, view){
             <span class="text-xs font-bold uppercase">Skift: </span>
             <span class="text-xs font-thin">{{ internalExtendedShifts.length }} skift</span>
             <div>
-                <span v-for="shift in internalExtendedShifts" class="text-xs font-thin">{{ shift.name }} ({{ shift.start }} - {{ shift.end }}), </span>
+                <div v-for="shift in internalExtendedShifts" class="text-xs font-thin whitespace-nowrap"><i class="pi pi-circle-fill" :style="{color: `#${shift.color}`, fontSize:'12px'}"></i>&nbsp;{{ shift.name }}&nbsp;({{ shift.start }}&nbsp;-&nbsp;{{ shift.end }})</div>
             </div>
         </div>
-        <div class="col-span-1 self-end">
+        <div class="col-span-1 justify-self-end">
             <span class="pi pi-ellipsis-h right-0 cursor-pointer" @click="openModal($event, 'shift')"></span>
         </div>
     </div>

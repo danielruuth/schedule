@@ -7,7 +7,7 @@
             </div>
         </div>
         <div :class="'col-span-11 grid gap-2 grid-row-1 grid-cols-' + weeks">
-            <div v-for="n in weeks">
+            <div v-for="n in weeks" style="grid-row: 1;">
                 <div class="week grid grid-cols-7">
                     <div :class="'day day-info dayIndex-'+ getDayIndex(n, i) +' day-' + i" v-for="i in 7">
                         <div v-for="(shift,index) in shifts" class="text-xs font-light text-center" :class="getOffsetWeightClass(shift.name, i, n)">
@@ -47,7 +47,8 @@
     const props = defineProps({
         weeks: Number,
         shifts: Array,
-        scheduledShifts:Array
+        scheduledShifts:Array,
+        requestedShifts:Array
     })
     
     const getScheduledShift = function(shiftIndex, dayIndex, weekIndex){
@@ -67,11 +68,20 @@
     const getShiftCountForDay = function(dayIndex, weekIndex, shiftName){
         let result = 0;
         let day = getDayIndex(weekIndex, dayIndex)
+        let counted = false
+
+
         if(props.scheduledShifts){
             props.scheduledShifts.forEach((resource)=>{
-                if(resource.shifts[day] == shiftName) result++
+                if(resource.shifts[day] == shiftName) result++; counted = true
             })
         }
+        if(!counted){
+            props.requestedShifts.forEach((resource)=>{
+                if(resource[day].shift == shiftName) result++
+            })
+        }
+        
         return result
     }
 

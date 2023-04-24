@@ -5,11 +5,11 @@
         <div class="col-span-1 resource-name">
             <span class="text-sm font-bold capitalize">{{ resource.name }}</span>
         </div>
-        <div :class="'col-span-11 grid gap-2 grid-row-1 grid-cols-' + week">
-            <div v-for="n in week">
+        <div :class="'col-span-11 grid gap-2 grid-rows-1 grid-cols-' + week">
+            <div v-for="n in week" class="col-span-1" style="grid-row: 1;">
                 <div class="week grid grid-cols-7">
                     <div :class="'day day-' + i" v-for="i in 7">
-                        <ScheduleDay @showContextMenu="handleRightClick" :shifts="localShifts" :dayIndex="getDayIndex(n,i)" :scheduledShift="getScheduledShift(n,i, scheduledShifts)" :requestedShift="requestedShifts[getDayIndex(n,i)]" :dayOfWeek="i" />
+                        <ScheduleDay @showContextMenu="handleRightClick" :shifts="localShifts" :dayIndex="getDayIndex(n,i)" :scheduledShift="getScheduledShift(n,i, scheduledShifts)" :requestedShift="getRequestedShift(n,i)" :dayOfWeek="i" />
                     </div>
                 </div>
             </div>
@@ -30,10 +30,6 @@ const emit = defineEmits(['requestMenu'])
 
     const localShifts = ref(props.shifts)
 
-    const getShift = function(week, day){
-        return 'A'
-    }
-
     const handleRightClick = function(event, data){
         data.resource = props.resource
         emit('requestMenu', event, data)
@@ -48,6 +44,13 @@ const emit = defineEmits(['requestMenu'])
         }
         return offset
     }
+
+    const getRequestedShift = function(week, day){
+        let shift = props.requestedShifts[getDayIndex(week,day)]
+        //let shiftObj = props.shifts.filter(item => item.name == shift.shift );
+        return shift
+    }
+
     const getScheduledShift = function(week, day, shifts){
         let offset = 0;
         if(week == 1){
@@ -57,7 +60,12 @@ const emit = defineEmits(['requestMenu'])
         }
         try{
             let shift = shifts.shifts[offset]
-            if(shift=='O'){ shift = '' }
+            if(shift=='O'){ shift = { name:'', color: 'rgba(255,255,255,0)' } }
+            else{
+                //Take shiftdata from props.shifts
+                let shiftObj = props.shifts.filter(item => item.name == shift );
+                shift = shiftObj[0]
+            }
             return shift;
         }catch(error){
             return ''
@@ -89,7 +97,7 @@ const emit = defineEmits(['requestMenu'])
         display: flex;
         align-items: center;
         flex-direction: column;
-        overflow: hidden;
+        z-index:2;
         height: 100%;
         transition: background-color 0.5s ease;
         cursor: pointer;

@@ -7,6 +7,7 @@
     console.log(dialogRef.value.data.rules.health)
 
     const health = ref(dialogRef.value.data.rules.health || false)
+    const groupOffshift = ref(dialogRef.value.data.rules.group_offshift || false)
     const weekendsConcat = ref(dialogRef.value.data.rules.min_weekends || false)
     const availableShifts = ref(dialogRef.value.data.shifts || [])
 
@@ -15,8 +16,8 @@
     const adv_constraint = ref([0,0,0,0,0,0])
 
     const updateSettings = function(event){
-        console.log('Updating rules')
-        emit('UpdateRules', {'health': health, 'min_weekends': weekendsConcat})
+        console.log('Updating rules', health, groupOffshift)
+        emit('UpdateRules', {'health': health, 'min_weekends': false, 'group_offshift': groupOffshift})
     }
 
     const explain = function(type){
@@ -43,9 +44,9 @@
             <InputSwitch class="mt-4" v-model="health" @change="updateSettings($event)"/>
         </div>
         <div class="col-span-5">
-            <span class="text-xs font-bold uppercase">Gruppera helgpass</span><br />
-            <span class="text-xs font-light">Används samma resurser för fredagkväll, lördag och söndagspass. (Kommer snart)</span><br />
-            <InputSwitch class="mt-4" v-model="weekendsConcat" @change="updateSettings($event)" disabled />
+            <span class="text-xs font-bold uppercase">Sammanhängande ledighet</span><br />
+            <span class="text-xs font-light">Ha alltid två dagars sammanhållande ledighet</span><br />
+            <InputSwitch class="mt-4" v-model="groupOffshift" @change="updateSettings($event)" />
         </div>
         <div class="col-span-10">
             <ViewMore :labels="['avancerat','dölj']" :hint="true" :hintHeight="50">

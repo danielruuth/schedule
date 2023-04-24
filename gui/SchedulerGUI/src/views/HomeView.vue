@@ -21,41 +21,6 @@ const scheduleError = ref(false)
 
 const ScheduleControll = new ScheduleHandler();
 ScheduleControll.useLocalStorage()
-/*ScheduleControll.set('shifts', [{
-        name: 'A',
-        demand: [3,3,3,3,3,2,2],
-        start: "06:45",
-        end: "16:15"
-    },
-    {
-        name: 'C',
-        demand: [3,3,3,3,2,2,2],
-        start: "14:00",
-        end: "21:00"
-    },
-    {
-        name: 'Verksamhetstid',
-        demand: [1,1,0,2,0,0,0],
-        start: "08:00",
-        end: "16:30"
-    }])
-
-ScheduleControll.set('resources', [
-    {name: 'Daniel'},
-    {name: 'Natalie'},
-    {name: 'Rikard'},
-    {name: 'Disa'},
-    {name: 'Clara'},
-    {name: 'Anna H'},
-    {name: 'Anna G'},
-    {name: 'Jeanette'},
-    {name: 'Karin'},
-    {name: 'Madeleine'},
-    {name: 'Erik'},
-    {name: 'Bibbi'}
-])
-ScheduleControll.set('startDate', moment().startOf('isoweek').format('YYYY-MM-DD') )
-ScheduleControll.set('weeks', 4)*/
 
 function updatedDates(event) {
     ScheduleControll.set('weeks', event.weeks.value);
@@ -65,7 +30,8 @@ function updatedDates(event) {
 const updatedRules = function(event){
     ScheduleControll.set('rules', { 
         health: event.health.value,
-        min_weekends: event.min_weekends.value
+        min_weekends: event.min_weekends.value,
+        group_offshift: event.group_offshift.value
     })
 }
 
@@ -193,7 +159,9 @@ const getTotalShifts = function(index){
         let resourceShifts = ScheduleControll.get('scheduledShifts')[index].shifts;
         let c = 0;
         resourceShifts.forEach((shiftType)=>{
-            c++
+            if(shiftType!='O'){
+                c++
+            }
         })
         return c;
     }catch(e){
@@ -300,7 +268,7 @@ const generateSchedule = function(){
             <div class="panel">
                 <Schedule @ResourceRequest="handleRequestOrFixed" :startDate="ScheduleControll.get('startDate')" :weeks="ScheduleControll.get('weeks')" :resources="ScheduleControll.get('resources')" :shifts="ScheduleControll.get('shifts')" :requestedShifts="requestedAssignedByUser" :scheduledShifts="ScheduleControll.get('scheduledShifts')"/>
             </div>
-            <div class="version font-thin text-xs">v.1.1</div>
+            <div class="version font-thin text-xs">v.1.2</div>
         </div>
         <div class="grid grid-cols-3 gap-2" v-if="showResult">
             <div class="panel">
