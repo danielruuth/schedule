@@ -27,10 +27,8 @@ const openModal = function(event, view){
         },
         emits: {
             onUpdateRules: (e) => {
-                console.log('Emitting', e)
                 internalRules.value = e
-                //LEts bubble it
-                emit('UpdateRules', {'health': e.health, 'min_weekends': e.min_weekends, 'group_offshift': e.group_offshift})
+                emit('UpdateRules', {'health': e.health, 'min_weekends': e.min_weekends, 'group_offshift': e.group_offshift, custom_rules: e.custom_rules})
             }
         }
     })
@@ -42,7 +40,10 @@ const openModal = function(event, view){
             <span class="text-xs font-bold uppercase">Regler: </span><br />
             <div class="text-xs font-thin" v-if="internalRules.health">Hälsoschema</div> 
             <div class="text-xs font-thin" v-if="internalRules.min_weekends">Gruppera helgpass</div> 
-            <div class="text-xs font-thin" v-if="internalRules.group_offshift">Sammanhållen ledighet</div> 
+            <div class="text-xs font-thin" v-if="internalRules.group_offshift">Sammanhållen ledighet</div>
+            <div class="text-xs font-thin" v-for="rule in internalRules.custom_rules">
+                {{ rule.name }}
+            </div> 
         </div>
         <div class="col-span-1 justify-self-end">
             <span class="pi pi-ellipsis-h right-0 cursor-pointer" @click="openModal($event)"></span>

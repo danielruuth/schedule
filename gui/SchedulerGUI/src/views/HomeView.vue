@@ -28,10 +28,13 @@ function updatedDates(event) {
 }
 
 const updatedRules = function(event){
+    console.log(event)
+    console.log('Trying to set rules')
     ScheduleControll.set('rules', { 
         health: event.health.value,
         min_weekends: event.min_weekends.value,
-        group_offshift: event.group_offshift.value
+        group_offshift: event.group_offshift.value,
+        custom_rules: event.custom_rules
     })
 }
 
@@ -153,6 +156,17 @@ const handleRequestOrFixed = function(request){
     }
 }
 
+const getTotalWeekendShifts = function(index){
+    let count = 0;
+    let resourceShifts = ScheduleControll.get('scheduledShifts')[index].shifts;
+    resourceShifts.forEach((shiftType, index)=>{
+        let weekday = index % 7
+        if(weekday > 4 && shiftType != 'O'){
+            count++
+        }        
+    })
+    return count;
+}
 
 const getTotalShifts = function(index){
     try{
@@ -178,10 +192,25 @@ const weeklySumConstraints = computed(()=>{
                 result.push(parsed)
             }
         }catch(error){
-            console.log(error)
+            console.error(error)
         }
     })
     return result
+})
+
+const daySumConstraints = computed(()=>{
+    let result = []
+    ScheduleControll.get('schedulePenalties').forEach((row)=>{
+        try{
+            let parsed = ScheduleControll.parsePenaltyVar(row)
+            if(parsed.type == 'day_sum_constraint'){
+                result.push(parsed)
+            }
+        }catch(e){
+            console.error(error)
+        }
+    })
+    return result;
 })
 
 const excessDemands = computed(()=>{
@@ -208,15 +237,27 @@ const shiftConstraints = computed(()=>{
 
 const generateSchedule = function(){
     loading.value = true
+    
     ScheduleControll.fetch()
     .then(()=>{
         loading.value = false
         showResult.value = true
+        
     }).catch((error)=>{
         loading.value = false
         scheduleError.value = true
     })
 }
+
+const days = [
+    'Måndag',
+    'Tisdag',
+    'Onsdag',
+    'Torsdag',
+    'Fredag',
+    'Lördag',
+    'Söndag'
+]
 
 </script>
 <style scoped>
@@ -261,14 +302,14 @@ const generateSchedule = function(){
                 <ShiftSelector :shifts="ScheduleControll.get('shifts')" />
             </div>
             <div class="panel">
-                <RuleSelector :rules="ScheduleControll.get('rules')" :shifts="ScheduleControll.get('shifts')" @UpdateRules="updatedRules" />
+                <RuleSelector :rules="ScheduleControll.get('rules')" :shifts="ScheduleControll.get('shifts')" @UpdateRules="updatedRules($event)" />
             </div>
         </div>
         <div class="grid">
             <div class="panel">
                 <Schedule @ResourceRequest="handleRequestOrFixed" :startDate="ScheduleControll.get('startDate')" :weeks="ScheduleControll.get('weeks')" :resources="ScheduleControll.get('resources')" :shifts="ScheduleControll.get('shifts')" :requestedShifts="requestedAssignedByUser" :scheduledShifts="ScheduleControll.get('scheduledShifts')"/>
             </div>
-            <div class="version font-thin text-xs">v.1.2</div>
+            <div class="version font-thin text-xs"><a href="https://github.com/danielruuth/schedule/commit/299e6bd362d786d55be0672694b34474ce692e8a">build 299e6bd</a></div>
         </div>
         <div class="grid grid-cols-3 gap-2" v-if="showResult">
             <div class="panel">
@@ -278,6 +319,7 @@ const generateSchedule = function(){
                         <tr>
                             <th class="text-xs font-bold text-left">Resurs</th>
                             <th v-for="shift in ScheduleControll.get('shifts')" class="text-xs font-bold text-left">{{ shift.name }}</th>
+                            <th class="text-xs font-bold text-left">Helgpass</th>
                             <th class="text-xs font-bold text-left">Totalt</th>
                         </tr>
                     </thead>
@@ -285,6 +327,7 @@ const generateSchedule = function(){
                         <tr v-for="(resource,index) in ScheduleControll.get('resources')">
                             <td class="text-xs font-bold">{{ resource.name }}</td>
                             <td v-for="shift in ScheduleControll.get('shifts')" class="text-xs font-light">{{ getShiftCount(index, shift.name) }}</td>
+                            <td class="text-xs font-light">{{ getTotalWeekendShifts(index) }}</td>
                             <td class="text-xs font-light"> {{ getTotalShifts(index) }} </td>
                         </tr>
                     </tbody>
@@ -295,79 +338,97 @@ const generateSchedule = function(){
                 <div v-if="ScheduleControll.get('schedulePenalties').length == 0">
                     Inga överträdelser!
                 </div>
-                <ViewMore v-else>
-                    <template #content>
-                        <table class="w-full zebra" cellpadding="2" v-if="weeklySumConstraints.length > 0">
-                            <thead>
-                                <tr>
-                                    <th colspan="4" class="text-xs font-bold text-left">Antal skift per vecka</th>
-                                </tr>
-                                <tr>
-                                    <th class="text-xs font-bold text-left">Detaljer</th>
-                                    <th class="text-xs font-bold text-left">Resurs</th>
-                                    <th class="text-xs font-bold text-left">Skift</th>
-                                    <th class="text-xs font-bold text-left">Vecka</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="penalty in weeklySumConstraints">
-                                    <td class="text-xs font-thin">{{ penalty.hint }}</td>
-                                    <td class="text-xs font-thin">{{ ScheduleControll.get('resources')[penalty.employee].name }}</td>
-                                    <td class="text-xs font-thin">{{ ScheduleControll.get('shifts')[penalty.shift-1].name }}</td>
-                                    <td class="text-xs font-thin">{{ penalty.week }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                        <table class="w-full zebra mt-4" cellpadding="2" v-if="excessDemands.length > 0">
-                            <thead>
-                                <tr>
-                                    <th colspan="3" class="text-xs font-bold text-left">Överplanerat skift</th>
-                                </tr>
-                                <tr>
-                                    <th class="text-xs font-bold text-left">Överträdelse</th>
-                                    <th class="text-xs font-bold text-left">Skift</th>
-                                    <th class="text-xs font-bold text-left">Dag</th>
-                                    <th class="text-xs font-bold text-left">Vecka</th>
-                                    
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="penalty in excessDemands">
-                                    <td class="text-xs font-thin">{{ penalty.type }}</td>
-                                    <td class="text-xs font-thin">{{ ScheduleControll.get('shifts')[penalty.shift-1].name }}</td>
-                                    <td class="text-xs font-thin">{{ penalty.day }}</td>
-                                    <td class="text-xs font-thin">{{ penalty.week }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <ScrollPanel v-else style="width: 100%; height: 300px">
+                    <table class="w-full zebra" cellpadding="2" v-if="weeklySumConstraints.length > 0">
+                        <thead>
+                            <tr>
+                                <th colspan="4" class="text-xs font-bold text-left">Antal skift per vecka</th>
+                            </tr>
+                            <tr>
+                                <th class="text-xs font-bold text-left">Detaljer</th>
+                                <th class="text-xs font-bold text-left">Resurs</th>
+                                <th class="text-xs font-bold text-left">Skift</th>
+                                <th class="text-xs font-bold text-left">Vecka</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="penalty in weeklySumConstraints">
+                                <td class="text-xs font-thin">{{ penalty.hint }}</td>
+                                <td class="text-xs font-thin">{{ ScheduleControll.get('resources')[penalty.employee].name }}</td>
+                                <td class="text-xs font-thin">{{ penalty.shift }}</td>
+                                <td class="text-xs font-thin">{{ penalty.week }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <table class="w-full zebra mt-4" cellpadding="2" v-if="excessDemands.length > 0">
+                        <thead>
+                            <tr>
+                                <th colspan="3" class="text-xs font-bold text-left">Överplanerat skift</th>
+                            </tr>
+                            <tr>
+                                <th class="text-xs font-bold text-left">Överträdelse</th>
+                                <th class="text-xs font-bold text-left">Skift</th>
+                                <th class="text-xs font-bold text-left">Dag</th>
+                                <th class="text-xs font-bold text-left">Vecka</th>
+                                
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="penalty in excessDemands">
+                                <td class="text-xs font-thin">{{ penalty.type }}</td>
+                                <td class="text-xs font-thin">{{ ScheduleControll.get('shifts')[penalty.shift-1].name }}</td>
+                                <td class="text-xs font-thin">{{ penalty.day }}</td>
+                                <td class="text-xs font-thin">{{ penalty.week }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
 
-                        <table class="w-full zebra mt-4" cellpadding="2" v-if="shiftConstraints.length > 0">
-                            <thead>
-                                <tr>
-                                    <th colspan="3" class="text-xs font-bold text-left">Skift begränsningar</th>
-                                </tr>
-                                <tr>
-                                    <th class="text-xs font-bold text-left">Resurs</th>
-                                    <th class="text-xs font-bold text-left">Skift</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <tr v-for="penalty in shiftConstraints">
-                                    <td class="text-xs font-thin">{{ penalty.employee }}</td>
-                                    <td class="text-xs font-thin">{{ penalty.shift }}</td>
-                                </tr>
-                            </tbody>
-                        </table>
-                    </template>
-                </ViewMore>
+                    <table class="w-full zebra mt-4" cellpadding="2" v-if="daySumConstraints.length > 0">
+                        <thead>
+                            <tr>
+                                <th colspan="3" class="text-xs font-bold text-left">Överplanerad resurs/veckodag</th>
+                            </tr>
+                            <tr>
+                                <th class="text-xs font-bold text-left">Regel</th>
+                                <th class="text-xs font-bold text-left">Resurs</th>
+                                <th class="text-xs font-bold text-left">Veckodag</th>
+                                <th class="text-xs font-bold text-left">Överträdelse</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="penalty in daySumConstraints">
+                                <td class="text-xs font-thin">{{ penalty.type }}</td>
+                                <td class="text-xs font-thin">{{ ScheduleControll.get('resources')[penalty.employee].name }}</td>
+                                <td class="text-xs font-thin">{{ days[penalty.day] }}</td>
+                                <td class="text-xs font-thin">{{ penalty.hint }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <table class="w-full zebra mt-4" cellpadding="2" v-if="shiftConstraints.length > 0">
+                        <thead>
+                            <tr>
+                                <th colspan="3" class="text-xs font-bold text-left">Skift begränsningar</th>
+                            </tr>
+                            <tr>
+                                <th class="text-xs font-bold text-left">Resurs</th>
+                                <th class="text-xs font-bold text-left">Skift</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr v-for="penalty in shiftConstraints">
+                                <td class="text-xs font-thin">{{ penalty.employee }}</td>
+                                <td class="text-xs font-thin">{{ penalty.shift }}</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </ScrollPanel>
             </div>
             <div class="panel">
                 <span class="text-sm font-bold font-uppercase">API anrop:</span>
-                <ViewMore v-if="ScheduleControll.api_request != ''">
-                    <template #content>
-                        <CodeView :code="ScheduleControll.api_request"></CodeView>
-                    </template>
-                </ViewMore>
+                <ScrollPanel style="width: 100%; height: 300px" v-if="ScheduleControll.api_request != ''">
+                    <CodeView :code="ScheduleControll.api_request"></CodeView>
+                </ScrollPanel>
             </div>
         </div>
         <div class="grid grid-cols-10 pb-8">

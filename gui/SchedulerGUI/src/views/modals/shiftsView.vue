@@ -47,7 +47,7 @@
             end: shift.value.end,
             break:"00:45", 
             demand: [0,0,0,0,0,0,0], 
-            excess_penalty: 2, 
+            excess_penalty: [2,2,2,2,2,2,2], 
             max_shifts: 2,
             max_shifts_penalty: 2,
             min_shifts: 2,
@@ -159,18 +159,21 @@
                 <input type="time" v-model="shiftEdit.break" class="form-input rounded-md bg-gray-100 border-transparent w-full"/>
             </div>
             <div class="col-span-5 mt-4">
-                <span class="text-sm font-bold uppercase">Resursbehov </span>
-                <div v-for="n in 7" class="gap-2 mt-1">
-                    <span class="text-xs font-bold uppercase">{{ weekdays[n-1] }}</span>
-                    <input type="number" v-model="shiftEdit.demand[n-1]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
+                <span class="text-sm font-bold uppercase">Resursbehov &amp; överbokning </span><br />
+                <span class="text-xs font-bold mb-4">Ange straff vid överbokning <small class="font-thin">(0 = Överbokning förbjudet)</small></span>
+                <div v-for="n in 7" class="gap-2 mt-1 grid grid-cols-3">
+                    <div class="col-span-2">
+                        <span class="text-xs font-bold uppercase">{{ weekdays[n-1] }}</span>
+                        <input type="number" v-model="shiftEdit.demand[n-1]" class="form-input rounded-md bg-gray-100 border-transparent w-full" />
+                    </div>
+                    <div>
+                        <span class="text-xs font-bold uppercase">Straff</span><br />
+                        <input type="number" class="form-input rounded-md bg-gray-100 border-transparent w-full" v-model="shiftEdit.excess_penalty[n-1]"/>
+                    </div>
                 </div>
             </div>
             <div class="col-span-5 mt-4">
                 <span class="text-sm font-bold uppercase">Avancerade inställningar</span><br />
-                <div class="gap-2 mt-1">
-                    <span class="text-xs font-bold uppercase">Straff vid överbokning</span><br />
-                    <input type="number" class="form-input rounded-md bg-gray-100 border-transparent w-full" v-model="shiftEdit.excess_penalty"/>
-                </div>
                 <div class="grid grid-cols-2 gap-2">
                     <div class="gap-2 mt-1">
                         <span class="text-xs font-bold uppercase">Max skift/vecka</span><br />
@@ -193,7 +196,7 @@
                 </div>
                 <div class="mt-2">
                     <span class="text-xs font-bold uppercase">Förklaringar:</span>
-                    <p class="text-xs font-thin"><span class="font-bold">Straff vid överbokningar</span> beskriver hur mycket programmet straffar att det är fler resurser än önskat planerat på ett skift. <span class="font-semibold">Ex.</span> Om skift A har 4p straff för överbokningar och skift C har 8p straff för överbokningar kommer programmet välja att överboka skift C innan det överbokar skift A eftersom det blir &quot;dyrare&quot; att överboka skift C.</p>
+                    <p class="text-xs font-thin"><span class="font-bold">Straff vid överbokningar</span> beskriver hur mycket programmet straffar att det är fler resurser än önskat planerat på ett skift. <span class="font-bold">Straff 0</span> anger att skiftet ej kan överbokas.<br /><span class="font-semibold">Ex.</span> Om skift A har 4p straff för överbokningar och skift C har 8p straff för överbokningar kommer programmet välja att överboka skift A innan det överbokar skift C eftersom det blir &quot;dyrare&quot; att överboka skift A.</p>
                     <p class="text-xs font-thin mt-1"><span class="font-bold">Max skift/vecka</span> anger hur många skift en enskild resurs kan göra som mest av skiftet, <span class="font-semibold">Ex.</span> kan man använda detta för att begränsa antalet kvällspass en resurs kan göra på en vecka.</p> 
                     <p class="text-xs font-thin mt-1"><span class="font-bold">Minst skift/vecka</span> anger hur många skift en enskild resurs måste göra som minst av skiftet, <span class="font-semibold">Ex.</span> en resurs måste göra minst ett kvällspass per vecka.</p>
                 </div>

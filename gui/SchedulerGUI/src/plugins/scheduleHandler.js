@@ -18,7 +18,8 @@ export default class ScheduleHandler {
         this.rules = ref({
             min_weekends: false,
             health: false,
-            group_offshift: false
+            group_offshift: false,
+            custom_rules: []
         })
         this.requests = ref([])
         this.assignments = ref([])
@@ -61,7 +62,7 @@ export default class ScheduleHandler {
                     2,
                     2
                 ],
-                "excess_penalty":2,
+                "excess_penalty":[2,2,2,2,2,2,2],
                 "max_shifts":2,
                 "max_shifts_penalty":2,
                 "min_shifts":2,
@@ -82,7 +83,7 @@ export default class ScheduleHandler {
                     2,
                     2
                 ],
-                "excess_penalty":2,
+                "excess_penalty":[2,2,2,2,2,2,2],
                 "max_shifts":2,
                 "max_shifts_penalty":2,
                 "min_shifts":2,
@@ -105,7 +106,7 @@ export default class ScheduleHandler {
                     0,
                     0
                 ],
-                "excess_penalty":2,
+                "excess_penalty":[2,2,2,2,2,2,2],
                 "max_shifts":2,
                 "max_shifts_penalty":2,
                 "min_shifts":2,
@@ -116,8 +117,8 @@ export default class ScheduleHandler {
         //
         let temp = []
         this.shifts.value.forEach((shift,index)=>{
-            if(!shift.excess_penalty || typeof shift.excess_penalty != 'Number'){
-                shift['excess_penalty'] = 2
+            if(!shift.excess_penalty || typeof shift.excess_penalty != 'Array'){
+                shift['excess_penalty'] = [2,2,2,2,2,2,2]
             }
             if(!shift.max_shifts){
                 shift['max_shifts'] = 2
@@ -172,7 +173,8 @@ export default class ScheduleHandler {
 
         this.rules.value = useLocalStorage.get('rules', {
             min_weekends: false,
-            health: false
+            health: false,
+            custom_rules: []
         })
 
         this.startDate.value = useLocalStorage.get('startDate', moment().startOf('isoweek').format('YYYY-MM-DD'))
@@ -243,9 +245,8 @@ export default class ScheduleHandler {
 
     getExcessCoverPenalties(shifts){
         let res = []
-        let shiftLateStart = new Date('1970-01-01T12:00:00.000Z').getTime();
         shifts.forEach((item)=>{
-            res.push(item.excess_penalty)
+            res.push(item.excess_penalty) //This should be an array representing each day
         })
         return res;
         
@@ -270,7 +271,7 @@ export default class ScheduleHandler {
     getWeeklySumConstraints(shifts){
         let res = []
 
-        res.push([0, 1, 2, 8, 2, 4, 4]) //Ledig
+        res.push([0, 2, 3, 8, 2, 3, 4]) //Ledig
         
         shifts.forEach((item, index)=>{
             let constraint = this.generateSumConstraint(index+1, item)
@@ -283,11 +284,11 @@ export default class ScheduleHandler {
         let res = []
         if(!this.get('rules').group_offshift){
             res.push(
-                [0, 1, 1, 0, 2, 2, 0]
+                [0, 1, 1, 0, 3, 6, 0]
             )
         }else{
             res.push(
-                [0, 2, 2, 0, 2, 2, 0]
+                [0, 2, 2, 0, 3, 6, 0]
             )
         }
         return res
@@ -338,14 +339,18 @@ export default class ScheduleHandler {
                 "weekly_sum_constraints":this.getWeeklySumConstraints(this.get('shifts')),
                 "penalized_transitions": this.getPenalizedTransitions(this.get('shifts')),
                 "cover_demands": this.getCoverDemands(this.get('shifts')),
-                "result_limit": 10
+                "max_weekend_shifts":8,
+                "result_limit": 15
             }
 
-            console.log(request)
-            
             const headers = {
                 'Content-Type': 'application/json',
             }
+
+            this.set('scheduledShifts', [])
+            this.set('schedulePenalties', [])
+            this.set('scheduleConflicts',[])
+            this.set('scheduleStatus', [])
             
 
             this.api_request.value = request

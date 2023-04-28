@@ -60,8 +60,11 @@ const emit = defineEmits(['requestMenu'])
         }
         try{
             let shift = shifts.shifts[offset]
-            if(shift=='O'){ shift = { name:'', color: 'rgba(255,255,255,0)' } }
-            else{
+            if(shift=='O'){ 
+                let shiftObj = { name:'', color: 'rgba(255,255,255,0)' } 
+                shift = shiftObj
+            }else{
+                console.log('Not offshift')
                 //Take shiftdata from props.shifts
                 let shiftObj = props.shifts.filter(item => item.name == shift );
                 shift = shiftObj[0]

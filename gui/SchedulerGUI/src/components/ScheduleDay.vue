@@ -23,7 +23,7 @@ const props = defineProps({
 const emit = defineEmits(['showContextMenu']) //defineEmits(['ResourceRequest'])
 
 const backgroundColor = computed(()=>{
-    if(props.scheduledShift != ''){
+    if(props.scheduledShift && props.scheduledShift.color){
         return `#${props.scheduledShift.color}`
     }else if(props.requestedShift != ''){
         return `#${props.requestedShift.color}`

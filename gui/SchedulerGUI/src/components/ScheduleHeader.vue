@@ -6,7 +6,7 @@
         <div :class="'col-span-11 grid gap-2 grid-row-1 grid-cols-' + weeks">
             <div v-for="n in weeks" style="grid-row: 1;">
                 <div class="week grid grid-cols-7">
-                    <div class="col-span-7 text-xs font-bold mb-2 indent-2"> v. {{ getDayFromOffset(n, i-1).format('w') }}</div>
+                    <div class="col-span-7 text-xs font-bold mb-2 indent-2"> v. {{ getDayFromOffset(n, 1).format('w') }}</div>
                     <div :class="'day day-info dayIndex-'+ getDayIndex(n, i) +' day-' + i" v-for="i=0 in 7">
                         <span class="text-xs font-light uppercase text-gray-500">{{ getDayFromOffset(n, i-1).format(getDisplayFormat()) }}</span>
                         <span :class="`${getDateTextSize()} font-bold uppercase`">{{ getDayFromOffset(n, i-1).format('DD') }}</span>
