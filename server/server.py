@@ -69,7 +69,8 @@ def generate_schedule():
         'cover_demands': [tuple(sub_array) for sub_array in post_data['cover_demands']],
         'penalized_transitions': [tuple(sub_array) for sub_array in post_data['penalized_transitions']],
         'weekly_sum_constraints':[tuple(sub_array) for sub_array in post_data['weekly_sum_constraints']],
-        'excess_cover_penalties':tuple(post_data['excess_cover_penalties']),
+        'excess_cover_penalties':[tuple(sub_array) for sub_array in post_data['excess_cover_penalties']],
+        'max_weekend_shifts' : post_data['max_weekend_shifts'],
         'limit':post_data['result_limit']
     }   
     s = Scheduler(post_params)

@@ -3,7 +3,7 @@ from absl import app
 from absl import flags
 
 import json
-
+import logging
 from ortools.sat.python import cp_model
 from google.protobuf import text_format
 
@@ -217,7 +217,6 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
         # Night to morning is forbidden.
         #(3, 1, 0),
         penalized_transitions = self._params['penalized_transitions']
-        
 
         # daily demands for work shifts (day, night) for each day
         # of the week starting on Monday.
@@ -226,8 +225,13 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
         # Penalty for exceeding the cover constraint per shift type.
         excess_cover_penalties = self._params['excess_cover_penalties'] #(2, 2, 5, 5) #Denna måste representera per shift
 
+
+        #Weekend shift constraints
+        max_weekend_shifts = self._params['max_weekend_shifts']
+
         num_days = num_weeks * 7
         num_shifts = len(shifts)
+
 
         model = cp_model.CpModel()
 
@@ -235,8 +239,8 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
         for e in range(num_employees):
             for s in range(num_shifts):
                 for d in range(num_days):
-                    work[e, s, d] = model.NewBoolVar('work%i_%i_%i' % (e, s, d))
-
+                    work[e, s, d, d % 7] = model.NewBoolVar('work%i_%i_%i_%i' % (e, s, d, d % 7))
+       
         # Linear terms of the objective in a minimization context.
         obj_int_vars = []
         obj_int_coeffs = []
@@ -246,22 +250,28 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
         # Exactly one shift per day.
         for e in range(num_employees):
             for d in range(num_days):
-                model.AddExactlyOne(work[e, s, d] for s in range(num_shifts))
+                model.AddExactlyOne(work[e, s, d, d % 7] for s in range(num_shifts))
+
+
+        # Weekend shift constraints to make sure we only work x shifts per scheduling period
+        for e in range(num_employees):
+            num_weekend_shifts = sum(work[e, s, d, d % 7] for s in range(num_shifts) for d in range(num_days) if d % 7 == 5 or d % 7 == 6)
+            model.Add(num_weekend_shifts <= max_weekend_shifts)
 
         # Fixed assignments.
         for e, s, d in fixed_assignments:
-            model.Add(work[e, s, d] == 1)
+            model.Add(work[e, s, d, d % 7] == 1)
 
         # Employee requests
         for e, s, d, w in requests:
-            obj_bool_vars.append(work[e, s, d])
+            obj_bool_vars.append(work[e, s, d, d % 7])
             obj_bool_coeffs.append(w)
 
         # Shift constraints
         for ct in shift_constraints:
             shift, hard_min, soft_min, min_cost, soft_max, hard_max, max_cost = ct
             for e in range(num_employees):
-                works = [work[e, shift, d] for d in range(num_days)]
+                works = [work[e, shift, d, d % 7] for d in range(num_days)]
                 variables, coeffs = self.add_soft_sequence_constraint(
                     model, works, hard_min, soft_min, min_cost, soft_max, hard_max,
                     max_cost,
@@ -274,7 +284,7 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
             shift, hard_min, soft_min, min_cost, soft_max, hard_max, max_cost = ct
             for e in range(num_employees):
                 for w in range(num_weeks):
-                    works = [work[e, shift, d + w * 7] for d in range(7)]
+                    works = [work[e, shift, d + w * 7, d % 7] for d in range(7)]
                     variables, coeffs = self.add_soft_sum_constraint(
                         model, works, hard_min, soft_min, min_cost, soft_max,
                         hard_max, max_cost,
@@ -282,16 +292,26 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
                         (e, shift, w))
                     obj_int_vars.extend(variables)
                     obj_int_coeffs.extend(coeffs)
-        ##
-
-        #if (i + 1) % 7 == 6 or (i + 1) % 7 == 0:
-        #    for e in range(num_employees):
-        #        self.AddSoftSequenceConstraint(
-        #            [tasks[i * num_resources + j], tasks[(i+1) * num_resources + j]],
-        #            1,  # a delay of 1 means that the same resource works on the two consecutive days
-        #            f'soft_sequence_constraint_{i}_{j}'
-        #        )
-
+        # Day sum constraints
+        # Day, hard_min, soft_min, min_cost, soft_max, hard_max, max_cost
+        """day_sum_constraints = [
+            (5, 1, 2, 3, 2, 2, 6),
+            (6, 1, 2, 3, 2, 2, 6)
+        ]
+        # Day sum constraints
+        for ct in day_sum_constraints:
+            day, hard_min, soft_min, min_cost, soft_max, hard_max, max_cost = ct
+            for e in range(num_employees):
+                for d in range(num_days):
+                    if d % 7 == day:
+                        works = [work[e, s, d, day] for s in range(num_shifts)]
+                        variables, coeffs = self.add_soft_sum_constraint(
+                            model, works, hard_min, soft_min, min_cost, soft_max,
+                            hard_max, max_cost,
+                            'day_sum_constraint(employee=%i, day=%i)' %
+                            (e, day))
+                        obj_int_vars.extend(variables)
+                        obj_int_coeffs.extend(coeffs)"""
 
         ##
         # Penalized transitions
@@ -299,8 +319,8 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
             for e in range(num_employees):
                 for d in range(num_days - 1):
                     transition = [
-                        work[e, previous_shift, d].Not(), work[e, next_shift,
-                                                               d + 1].Not()
+                        work[e, previous_shift, d, d % 7].Not(), work[e, next_shift,
+                                                               d + 1, (d + 1) % 7].Not()
                     ]
                     if cost == 0:
                         model.AddBoolOr(transition)
@@ -311,17 +331,17 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
                         model.AddBoolOr(transition)
                         obj_bool_vars.append(trans_var)
                         obj_bool_coeffs.append(cost)
-
+        
         # Cover constraints
         for s in range(1, num_shifts):
             for w in range(num_weeks):
                 for d in range(7):
-                    works = [work[e, s, w * 7 + d] for e in range(num_employees)]
+                    works = [work[e, s, w * 7 + d, d % 7] for e in range(num_employees)]
                     # Ignore Off shift.
                     min_demand = weekly_cover_demands[d][s - 1]
                     worked = model.NewIntVar(min_demand, num_employees, '')
                     model.Add(worked == sum(works))
-                    over_penalty = excess_cover_penalties[s - 1]
+                    over_penalty = excess_cover_penalties[s - 1][d]
                     if over_penalty > 0:
                         name = 'excess_demand(shift=%i, week=%i, day=%i)' % (s, w,
                                                                              d)
@@ -330,6 +350,9 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
                         model.Add(excess == worked - min_demand)
                         obj_int_vars.append(excess)
                         obj_int_coeffs.append(over_penalty)
+                    else:
+                        # If penalty is 0, forbid excess cover completely
+                        model.Add(worked <= min_demand)
 
         # Objective
         model.Minimize(
@@ -338,10 +361,13 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
             sum(obj_int_vars[i] * obj_int_coeffs[i]
                 for i in range(len(obj_int_vars))))
 
+        
         # Solve the model.
         solver = cp_model.CpSolver()
+        #solver.parameters.enumerate_all_solutions = True
         solution_printer = cp_model.ObjectiveSolutionPrinter()
         status = solver.Solve(model, self)
+        
         
         # Print solution.
         retval_shifts = []
@@ -354,7 +380,7 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
                 schedule = ''
                 for d in range(num_days):
                     for s in range(num_shifts):
-                        if solver.BooleanValue(work[e, s, d]):
+                        if solver.BooleanValue(work[e, s, d, d % 7]):
                             schedule += shifts[s] + ' '
                             retval_shifts[e]['shifts'].append(shifts[s])
                 
@@ -397,6 +423,8 @@ class Scheduler(cp_model.CpSolverSolutionCallback):
             }
             )
         else:
+            if status == cp_model.INFEASIBLE:
+                print('Model is infeasible')
             return json.dumps({
                 "result":[],
                 "status": 'NOT FEASABLE'
