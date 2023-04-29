@@ -14,3 +14,4 @@ Ett pågående projekt för att implementera en smart schemaläggare med hjälp 
 Att kunna erbjuda denna planerare inom hälso- och sjukvården och för eget intresse av SAT-solvers.
 
 
+![schema gui](http://schema.studioruuth.com/schema.gif)
